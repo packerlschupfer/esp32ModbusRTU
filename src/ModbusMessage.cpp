@@ -143,7 +143,7 @@ ModbusRequest02::ModbusRequest02(uint8_t slaveAddress, uint16_t address, uint16_
   _slaveAddress = slaveAddress;
   _functionCode = esp32Modbus::READ_DISCR_INPUT;
   _address = address;
-  _byteCount = numberCoils / 8 + 1;
+  _byteCount = (numberCoils + 7) / 8;
   add(_slaveAddress);
   add(_functionCode);
   add(high(_address));
