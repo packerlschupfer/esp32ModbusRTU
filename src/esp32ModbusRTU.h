@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef esp32ModbusRTU_h
 #define esp32ModbusRTU_h
 
-#if defined ARDUINO_ARCH_ESP32
+#if defined(ARDUINO_ARCH_ESP32) || defined(ESP32) || defined(ESP_PLATFORM)
 
 #ifndef QUEUE_SIZE
 #define QUEUE_SIZE 20
