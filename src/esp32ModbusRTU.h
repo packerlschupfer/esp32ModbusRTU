@@ -85,10 +85,4 @@ private:
 
 #endif
 
-#elif defined VITOWIFI_TEST
-
-#else
-
-#pragma message "no suitable platform"
-
 #endif
