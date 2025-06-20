@@ -33,6 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MODBUS_TASK_STACK_SIZE 5120
 #endif
 
+// Static task name to prevent corruption
+static const char* MODBUS_TASK_NAME = "esp32ModbusRTU";
+
 using namespace esp32ModbusRTUInternals; // NOLINT
 
 esp32ModbusRTU::esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin) : TimeOutValue(TIMEOUT_MS),
@@ -74,7 +77,8 @@ esp32ModbusRTU::~esp32ModbusRTU()
 
   // Delete task if it exists
   if (_task != nullptr) {
-    // Unsubscribe from watchdog before deleting task
+    // Try to unsubscribe from watchdog before deleting task
+    // Note: This may fail if the task wasn't registered, which is fine
     esp_task_wdt_delete(_task);
     vTaskDelete(_task);
     _task = nullptr;
@@ -104,7 +108,7 @@ void esp32ModbusRTU::begin(int coreID /* = -1 */)
     digitalWrite(_rtsPin, LOW);
   }
   
-  BaseType_t taskResult = xTaskCreatePinnedToCore((TaskFunction_t)&_handleConnection, "esp32ModbusRTU", MODBUS_TASK_STACK_SIZE, this, 5, &_task, coreID >= 0 ? coreID : NULL);
+  BaseType_t taskResult = xTaskCreatePinnedToCore((TaskFunction_t)&_handleConnection, MODBUS_TASK_NAME, MODBUS_TASK_STACK_SIZE, this, 5, &_task, coreID >= 0 ? coreID : NULL);
   
   if (taskResult == pdPASS && _task != nullptr) {
     #ifdef MODBUS_RTU_DEBUG
@@ -224,8 +228,34 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
 
 void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
 {
-  // Subscribe this task to TWDT, allowing maximum timeout
-  esp_task_wdt_add(NULL);
+  // Static flag to ensure we only register once
+  static bool watchdogRegistered = false;
+  bool watchdogActive = false;
+  
+  // Subscribe this task to TWDT only once
+  if (!watchdogRegistered) {
+    esp_err_t result = esp_task_wdt_add(NULL);
+    if (result == ESP_OK) {
+      watchdogRegistered = true;
+      watchdogActive = true;
+      #ifdef MODBUS_RTU_DEBUG
+      Serial.printf("[ModbusRTU] Task successfully registered with watchdog\n");
+      #endif
+    } else if (result == ESP_ERR_INVALID_ARG) {
+      // Task is already registered (shouldn't happen with our flag, but be safe)
+      watchdogRegistered = true;
+      watchdogActive = true;
+      #ifdef MODBUS_RTU_DEBUG
+      Serial.printf("[ModbusRTU] Task already registered with watchdog\n");
+      #endif
+    } else {
+      #ifdef MODBUS_RTU_DEBUG
+      Serial.printf("[ModbusRTU] Failed to register with watchdog: %d\n", result);
+      #endif
+    }
+  } else {
+    watchdogActive = true;
+  }
   
   while (1)
   {
@@ -256,13 +286,17 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       delete request;  // object created in public methods
       delete response; // object created in _receive()
       
-      // Feed watchdog after processing request
-      esp_task_wdt_reset();
+      // Feed watchdog after processing request (only if registered)
+      if (watchdogActive) {
+        esp_task_wdt_reset();
+      }
     }
     else
     {
-      // No message received within timeout, just feed the watchdog
-      esp_task_wdt_reset();
+      // No message received within timeout, just feed the watchdog (only if registered)
+      if (watchdogActive) {
+        esp_task_wdt_reset();
+      }
     }
   }
 }
