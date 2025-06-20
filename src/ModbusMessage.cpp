@@ -105,9 +105,17 @@ ModbusMessage::ModbusMessage(uint8_t length) :
   _length(length),
   _index(0) {
   if (length < 5) _length = 5;  // minimum for Modbus Exception codes
+  
+  // Safety check to prevent excessive allocation
+  if (_length > 255) {  // Max uint8_t value, reasonable for Modbus RTU
+    _length = 255;
+  }
+  
   _buffer = new uint8_t[_length];
-  for (uint8_t i = 0; i < _length; ++i) {
-    _buffer[i] = 0;
+  if (_buffer != nullptr) {
+    for (uint8_t i = 0; i < _length; ++i) {
+      _buffer[i] = 0;
+    }
   }
 }
 
@@ -124,7 +132,11 @@ uint8_t ModbusMessage::getSize() {
 }
 
 void ModbusMessage::add(uint8_t value) {
-  if (_index < _length) _buffer[_index++] = value;
+  if (_buffer != nullptr && _index < _length) {
+    _buffer[_index++] = value;
+  }
+  // Note: Silently dropping data if buffer is full or null
+  // Could add error logging here if needed
 }
 
 ModbusRequest::ModbusRequest(uint8_t length) :
@@ -267,6 +279,7 @@ size_t ModbusRequest06::responseLength() {
 
 ModbusRequest0F::ModbusRequest0F(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool* values) :
   ModbusRequest(9 + ((numberCoils + 7) / 8)) {
+  // Note: numberCoils should already be validated by esp32ModbusRTU::writeMultipleCoils
   _slaveAddress = slaveAddress;
   _functionCode = esp32Modbus::WRITE_MULT_COILS;
   _address = address;

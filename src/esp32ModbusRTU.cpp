@@ -43,6 +43,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   #define MODBUS_USE_WATCHDOG 1
 #endif
 
+// Safety limits to prevent excessive memory allocation
+#ifndef MODBUS_MAX_COILS
+#define MODBUS_MAX_COILS 2000  // Maximum 2000 coils (250 bytes)
+#endif
+
+#ifndef MODBUS_MAX_REGISTERS
+#define MODBUS_MAX_REGISTERS 125  // Maximum 125 registers (250 bytes)
+#endif
+
+#ifndef MODBUS_MAX_MESSAGE_SIZE
+#define MODBUS_MAX_MESSAGE_SIZE 256  // Maximum Modbus RTU frame size
+#endif
+
 // Static task name to prevent corruption
 static const char* MODBUS_TASK_NAME = "esp32ModbusRTU";
 
@@ -182,18 +195,45 @@ bool esp32ModbusRTU::writeSingleHoldingRegister(uint8_t slaveAddress, uint16_t a
 
 bool esp32ModbusRTU::writeMultipleCoils(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool *values)
 {
+  // Validate parameters
+  if (numberCoils == 0 || numberCoils > MODBUS_MAX_COILS || values == nullptr) {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] writeMultipleCoils: Invalid parameters (coils=%d, max=%d)\n", numberCoils, MODBUS_MAX_COILS);
+    #endif
+    return false;
+  }
+  
   ModbusRequest *request = new ModbusRequest0F(slaveAddress, address, numberCoils, values);
   return _addToQueue(request);
 }
 
 bool esp32ModbusRTU::writeMultHoldingRegisters(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, uint8_t *data)
 {
+  // Validate parameters
+  if (numberRegisters == 0 || numberRegisters > MODBUS_MAX_REGISTERS || data == nullptr) {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] writeMultHoldingRegisters: Invalid parameters (registers=%d, max=%d)\n", numberRegisters, MODBUS_MAX_REGISTERS);
+    #endif
+    return false;
+  }
+  
   ModbusRequest *request = new ModbusRequest16(slaveAddress, address, numberRegisters, data);
   return _addToQueue(request);
 }
 
 bool esp32ModbusRTU::readWriteMultipleRegisters(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t *writeData)
 {
+  // Validate parameters
+  if (readCount == 0 || readCount > MODBUS_MAX_REGISTERS || 
+      writeCount == 0 || writeCount > MODBUS_MAX_REGISTERS || 
+      writeData == nullptr) {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] readWriteMultipleRegisters: Invalid parameters (read=%d, write=%d, max=%d)\n", 
+                  readCount, writeCount, MODBUS_MAX_REGISTERS);
+    #endif
+    return false;
+  }
+  
   ModbusRequest *request = new ModbusRequest17(slaveAddress, readAddress, readCount, writeAddress, writeCount, writeData);
   return _addToQueue(request);
 }
@@ -402,7 +442,13 @@ void esp32ModbusRTU::setTimeOutValue(uint32_t tov)
 
 ModbusResponse *esp32ModbusRTU::_receive(ModbusRequest *request)
 {
-  ModbusResponse *response = new ModbusResponse(request->responseLength(), request);
+  // Get expected response length and validate
+  size_t responseLen = request->responseLength();
+  if (responseLen > MODBUS_MAX_MESSAGE_SIZE) {
+    responseLen = MODBUS_MAX_MESSAGE_SIZE;
+  }
+  
+  ModbusResponse *response = new ModbusResponse(responseLen, request);
   while (true)
   {
     while (_serial->available())
