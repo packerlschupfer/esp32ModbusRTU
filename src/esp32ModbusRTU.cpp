@@ -87,6 +87,12 @@ void esp32ModbusRTU::begin(int coreID /* = -1 */)
     _interval = 1; // minimum of 1msec interval
 }
 
+bool esp32ModbusRTU::readCoils(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils)
+{
+  ModbusRequest *request = new ModbusRequest01(slaveAddress, address, numberCoils);
+  return _addToQueue(request);
+}
+
 bool esp32ModbusRTU::readDiscreteInputs(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils)
 {
   ModbusRequest *request = new ModbusRequest02(slaveAddress, address, numberCoils);
@@ -105,15 +111,33 @@ bool esp32ModbusRTU::readInputRegisters(uint8_t slaveAddress, uint16_t address, 
   return _addToQueue(request);
 }
 
+bool esp32ModbusRTU::writeSingleCoil(uint8_t slaveAddress, uint16_t address, bool value)
+{
+  ModbusRequest *request = new ModbusRequest05(slaveAddress, address, value);
+  return _addToQueue(request);
+}
+
 bool esp32ModbusRTU::writeSingleHoldingRegister(uint8_t slaveAddress, uint16_t address, uint16_t data)
 {
   ModbusRequest *request = new ModbusRequest06(slaveAddress, address, data);
   return _addToQueue(request);
 }
 
+bool esp32ModbusRTU::writeMultipleCoils(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool *values)
+{
+  ModbusRequest *request = new ModbusRequest0F(slaveAddress, address, numberCoils, values);
+  return _addToQueue(request);
+}
+
 bool esp32ModbusRTU::writeMultHoldingRegisters(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, uint8_t *data)
 {
   ModbusRequest *request = new ModbusRequest16(slaveAddress, address, numberRegisters, data);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::readWriteMultipleRegisters(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t *writeData)
+{
+  ModbusRequest *request = new ModbusRequest17(slaveAddress, readAddress, readCount, writeAddress, writeCount, writeData);
   return _addToQueue(request);
 }
 

@@ -54,11 +54,15 @@ public:
   explicit esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin = -1);
   ~esp32ModbusRTU();
   void begin(int coreID = -1);
+  bool readCoils(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils);
   bool readDiscreteInputs(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils);
   bool readHoldingRegisters(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters);
   bool readInputRegisters(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters);
+  bool writeSingleCoil(uint8_t slaveAddress, uint16_t address, bool value);
   bool writeSingleHoldingRegister(uint8_t slaveAddress, uint16_t address, uint16_t data);
+  bool writeMultipleCoils(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool *values);
   bool writeMultHoldingRegisters(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, uint8_t *data);
+  bool readWriteMultipleRegisters(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t *writeData);
   void onData(esp32Modbus::MBRTUOnData handler);
   void onError(esp32Modbus::MBRTUOnError handler);
   void setTimeOutValue(uint32_t tov);

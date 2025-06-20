@@ -138,6 +138,27 @@ ModbusRequest::ModbusRequest(uint8_t length) :
   return _address;
 }
 
+ModbusRequest01::ModbusRequest01(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils) :
+  ModbusRequest(8) {
+  _slaveAddress = slaveAddress;
+  _functionCode = esp32Modbus::READ_COIL;
+  _address = address;
+  _byteCount = (numberCoils + 7) / 8;
+  add(_slaveAddress);
+  add(_functionCode);
+  add(high(_address));
+  add(low(_address));
+  add(high(numberCoils));
+  add(low(numberCoils));
+  uint16_t CRC = CRC16(_buffer, 6);
+  add(low(CRC));
+  add(high(CRC));
+}
+
+size_t ModbusRequest01::responseLength() {
+  return 5 + _byteCount;
+}
+
 ModbusRequest02::ModbusRequest02(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils) :
   ModbusRequest(8) {
   _slaveAddress = slaveAddress;
@@ -202,6 +223,27 @@ size_t ModbusRequest04::responseLength() {
   return 5 + _byteCount;
 }
 
+ModbusRequest05::ModbusRequest05(uint8_t slaveAddress, uint16_t address, bool value) :
+  ModbusRequest(8) {
+  _slaveAddress = slaveAddress;
+  _functionCode = esp32Modbus::WRITE_COIL;
+  _address = address;
+  _byteCount = 2;
+  add(_slaveAddress);
+  add(_functionCode);
+  add(high(_address));
+  add(low(_address));
+  add(value ? 0xFF : 0x00);  // 0xFF00 for true, 0x0000 for false
+  add(0x00);
+  uint16_t CRC = CRC16(_buffer, 6);
+  add(low(CRC));
+  add(high(CRC));
+}
+
+size_t ModbusRequest05::responseLength() {
+  return 8;
+}
+
 ModbusRequest06::ModbusRequest06(uint8_t slaveAddress, uint16_t address, uint16_t data) :
   ModbusRequest(8) {
   _slaveAddress = slaveAddress;
@@ -220,6 +262,40 @@ ModbusRequest06::ModbusRequest06(uint8_t slaveAddress, uint16_t address, uint16_
 }
 
 size_t ModbusRequest06::responseLength() {
+  return 8;
+}
+
+ModbusRequest0F::ModbusRequest0F(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool* values) :
+  ModbusRequest(9 + ((numberCoils + 7) / 8)) {
+  _slaveAddress = slaveAddress;
+  _functionCode = esp32Modbus::WRITE_MULT_COILS;
+  _address = address;
+  _byteCount = (numberCoils + 7) / 8;  // number of bytes needed for coils
+  add(_slaveAddress);
+  add(_functionCode);
+  add(high(_address));
+  add(low(_address));
+  add(high(numberCoils));
+  add(low(numberCoils));
+  add(_byteCount);
+  
+  // Pack bool values into bytes (8 coils per byte)
+  for (int i = 0; i < _byteCount; i++) {
+    uint8_t byte = 0;
+    for (int bit = 0; bit < 8 && (i * 8 + bit) < numberCoils; bit++) {
+      if (values[i * 8 + bit]) {
+        byte |= (1 << bit);
+      }
+    }
+    add(byte);
+  }
+  
+  uint16_t CRC = CRC16(_buffer, 7 + _byteCount);
+  add(low(CRC));
+  add(high(CRC));
+}
+
+size_t ModbusRequest0F::responseLength() {
   return 8;
 }
 
@@ -246,6 +322,41 @@ ModbusRequest16::ModbusRequest16(uint8_t slaveAddress, uint16_t address, uint16_
 
 size_t ModbusRequest16::responseLength() {
   return 8;
+}
+
+ModbusRequest17::ModbusRequest17(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t* writeData) :
+  ModbusRequest(11 + (writeCount * 2)) {
+  _slaveAddress = slaveAddress;
+  _functionCode = esp32Modbus::READ_WRITE_MULT_REGISTERS;
+  _address = readAddress;  // Store read address
+  _byteCount = readCount * 2;  // Store expected response byte count
+  
+  add(_slaveAddress);
+  add(_functionCode);
+  add(high(readAddress));
+  add(low(readAddress));
+  add(high(readCount));
+  add(low(readCount));
+  add(high(writeAddress));
+  add(low(writeAddress));
+  add(high(writeCount));
+  add(low(writeCount));
+  add(writeCount * 2);  // byte count for write data
+  
+  // Add write data
+  for (int i = 0; i < writeCount; i++) {
+    add(high(writeData[i]));
+    add(low(writeData[i]));
+  }
+  
+  uint16_t CRC = CRC16(_buffer, 11 + (writeCount * 2) - 2);
+  add(low(CRC));
+  add(high(CRC));
+}
+
+size_t ModbusRequest17::responseLength() {
+  // Response: slaveAddress(1) + functionCode(1) + byteCount(1) + data(byteCount) + CRC(2)
+  return 5 + _byteCount;
 }
 
 ModbusResponse::ModbusResponse(uint8_t length, ModbusRequest* request) :

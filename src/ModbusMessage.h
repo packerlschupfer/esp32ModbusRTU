@@ -61,7 +61,14 @@ class ModbusRequest : public ModbusMessage {
   uint16_t _byteCount;
 };
 
-// read discrete coils
+// read coils
+class ModbusRequest01 : public ModbusRequest {
+ public:
+  explicit ModbusRequest01(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils);
+  size_t responseLength();
+};
+
+// read discrete inputs
 class ModbusRequest02 : public ModbusRequest {
  public:
   explicit ModbusRequest02(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils);
@@ -82,10 +89,24 @@ class ModbusRequest04 : public ModbusRequest {
   size_t responseLength();
 };
 
-// write single holding registers
+// write single coil
+class ModbusRequest05 : public ModbusRequest {
+ public:
+  explicit ModbusRequest05(uint8_t slaveAddress, uint16_t address, bool value);
+  size_t responseLength();
+};
+
+// write single holding register
 class ModbusRequest06 : public ModbusRequest {
  public:
   explicit ModbusRequest06(uint8_t slaveAddress, uint16_t address, uint16_t data);
+  size_t responseLength();
+};
+
+// write multiple coils
+class ModbusRequest0F : public ModbusRequest {
+ public:
+  explicit ModbusRequest0F(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool* values);
   size_t responseLength();
 };
 
@@ -93,6 +114,13 @@ class ModbusRequest06 : public ModbusRequest {
 class ModbusRequest16 : public ModbusRequest {
  public:
   explicit ModbusRequest16(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, uint8_t* data);
+  size_t responseLength();
+};
+
+// read/write multiple registers
+class ModbusRequest17 : public ModbusRequest {
+ public:
+  explicit ModbusRequest17(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t* writeData);
   size_t responseLength();
 };
 

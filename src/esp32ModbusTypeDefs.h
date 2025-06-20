@@ -40,7 +40,8 @@ enum FunctionCode : uint8_t {
   WRITE_COIL           = 0x05,
   WRITE_HOLD_REGISTER  = 0x06,
   WRITE_MULT_COILS     = 0x0F,
-  WRITE_MULT_REGISTERS = 0x10
+  WRITE_MULT_REGISTERS = 0x10,
+  READ_WRITE_MULT_REGISTERS = 0x17
 };
 
 enum Error : uint8_t {
