@@ -20,6 +20,20 @@ This is a non blocking Modbus client (master) for ESP32.
   -  read input registers (04)
 -  similar API as my [esp32ModbusTCP](https://github.com/bertmelis/esp32ModbusTCP) implementation
 
+## Watchdog Configuration
+
+This library includes ESP32 Task Watchdog Timer (TWDT) support. By default, the library will:
+1. Register its task with the watchdog on startup
+2. Feed the watchdog periodically during operation
+
+If your application manages watchdog registration externally or you experience "task already subscribed" errors, you can disable the library's watchdog handling by defining:
+
+```cpp
+#define MODBUS_DISABLE_WATCHDOG
+```
+
+This must be defined before including the library headers.
+
 ## Developement status
 
 I have this library in use myself with quite some uptime (only using FC3 -read holding registers- though).
