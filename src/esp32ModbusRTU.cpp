@@ -87,11 +87,10 @@ esp32ModbusRTU::~esp32ModbusRTU()
 
   // Delete task if it exists
   if (_task != nullptr) {
-    #if MODBUS_USE_WATCHDOG
-    // Try to unsubscribe from watchdog before deleting task
-    // Note: This may fail if the task wasn't registered, which is fine
-    esp_task_wdt_delete(_task);
-    #endif
+    // Note: We don't unsubscribe from watchdog here because:
+    // 1. The task registered itself using xTaskGetCurrentTaskHandle()
+    // 2. We only have the task handle from xTaskCreate, which might differ
+    // 3. The task will be deleted anyway, removing it from watchdog
     vTaskDelete(_task);
     _task = nullptr;
   }
@@ -307,7 +306,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
   }
   #endif
   
-  while (1)
+  while (!instance->_shutdown)
   {
     ModbusRequest *request;
     // Use a timeout instead of portMAX_DELAY to allow periodic watchdog feeding
@@ -316,7 +315,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       if (instance->_shutdown)
       {
         delete request;
-        continue;
+        break;  // Exit the loop on shutdown
       }
 
       // block and wait for queued item
@@ -337,8 +336,8 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       delete response; // object created in _receive()
       
       #if MODBUS_USE_WATCHDOG
-      // Feed watchdog after processing request (only if registered)
-      if (watchdogActive) {
+      // Feed watchdog after processing request (only if registered and not shutting down)
+      if (watchdogActive && !instance->_shutdown) {
         esp_task_wdt_reset();
       }
       #endif
@@ -346,13 +345,25 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
     else
     {
       #if MODBUS_USE_WATCHDOG
-      // No message received within timeout, just feed the watchdog (only if registered)
-      if (watchdogActive) {
+      // No message received within timeout, just feed the watchdog (only if registered and not shutting down)
+      if (watchdogActive && !instance->_shutdown) {
         esp_task_wdt_reset();
       }
       #endif
     }
   }
+  
+  // Task is exiting due to shutdown
+  #if MODBUS_USE_WATCHDOG
+  if (watchdogActive) {
+    // Try to unsubscribe cleanly before task exits
+    TaskHandle_t currentTask = xTaskGetCurrentTaskHandle();
+    esp_task_wdt_delete(currentTask);
+  }
+  #endif
+  
+  // Delete ourselves
+  vTaskDelete(NULL);
 }
 
 void esp32ModbusRTU::_send(uint8_t *data, uint8_t length)
