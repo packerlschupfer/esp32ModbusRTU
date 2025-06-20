@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined ARDUINO_ARCH_ESP32
 
+#include <esp_task_wdt.h>
+
 // Allow stack size to be configured via build flags
 #ifndef MODBUS_TASK_STACK_SIZE
 #define MODBUS_TASK_STACK_SIZE 5120
@@ -72,6 +74,8 @@ esp32ModbusRTU::~esp32ModbusRTU()
 
   // Delete task if it exists
   if (_task != nullptr) {
+    // Unsubscribe from watchdog before deleting task
+    esp_task_wdt_delete(_task);
     vTaskDelete(_task);
     _task = nullptr;
   }
@@ -220,10 +224,14 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
 
 void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
 {
+  // Subscribe this task to TWDT, allowing maximum timeout
+  esp_task_wdt_add(NULL);
+  
   while (1)
   {
     ModbusRequest *request;
-    if (instance->_queue && pdTRUE == xQueueReceive(instance->_queue, &request, portMAX_DELAY))
+    // Use a timeout instead of portMAX_DELAY to allow periodic watchdog feeding
+    if (instance->_queue && pdTRUE == xQueueReceive(instance->_queue, &request, pdMS_TO_TICKS(1000)))
     {
       if (instance->_shutdown)
       {
@@ -247,6 +255,14 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       }
       delete request;  // object created in public methods
       delete response; // object created in _receive()
+      
+      // Feed watchdog after processing request
+      esp_task_wdt_reset();
+    }
+    else
+    {
+      // No message received within timeout, just feed the watchdog
+      esp_task_wdt_reset();
     }
   }
 }
