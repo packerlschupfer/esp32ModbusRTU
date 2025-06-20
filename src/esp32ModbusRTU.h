@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32) || defined(ESP_PLATFORM)
 
 #ifndef QUEUE_SIZE
-#define QUEUE_SIZE 20
+#define QUEUE_SIZE 16  // Reduced from 20 to save memory
 #endif
 #ifndef TIMEOUT_MS
 #define TIMEOUT_MS 5000

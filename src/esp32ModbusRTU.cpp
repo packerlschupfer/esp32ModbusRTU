@@ -26,6 +26,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined ARDUINO_ARCH_ESP32
 
+// Allow stack size to be configured via build flags
+#ifndef MODBUS_TASK_STACK_SIZE
+#define MODBUS_TASK_STACK_SIZE 5120
+#endif
+
 using namespace esp32ModbusRTUInternals; // NOLINT
 
 esp32ModbusRTU::esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin) : TimeOutValue(TIMEOUT_MS),
@@ -73,7 +78,9 @@ void esp32ModbusRTU::begin(int coreID /* = -1 */)
     pinMode(_rtsPin, OUTPUT);
     digitalWrite(_rtsPin, LOW);
   }
-  xTaskCreatePinnedToCore((TaskFunction_t)&_handleConnection, "esp32ModbusRTU", 4096, this, 5, &_task, coreID >= 0 ? coreID : NULL);
+  
+  xTaskCreatePinnedToCore((TaskFunction_t)&_handleConnection, "esp32ModbusRTU", MODBUS_TASK_STACK_SIZE, this, 5, &_task, coreID >= 0 ? coreID : NULL);
+  
   // silent interval is at least 3.5x character time
   _interval = 40000 / _serial->baudRate(); // 4 * 1000 * 10 / baud
   if (_interval == 0)
@@ -153,6 +160,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       // block and wait for queued item
       instance->_send(request->getMessage(), request->getSize());
       ModbusResponse *response = instance->_receive(request);
+      
       if (response->isSucces())
       {
         if (instance->_onData)
@@ -173,6 +181,7 @@ void esp32ModbusRTU::_send(uint8_t *data, uint8_t length)
 {
   while (millis() - _lastMillis < _interval)
     delay(1); // respect _interval
+  
   // Toggle rtsPin, if necessary
   if (_rtsPin >= 0)
     digitalWrite(_rtsPin, HIGH);
