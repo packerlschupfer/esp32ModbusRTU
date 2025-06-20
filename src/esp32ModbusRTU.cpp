@@ -228,19 +228,23 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
   }
   else if (_task == nullptr)
   {
+    #ifdef MODBUS_RTU_DEBUG
     Serial.printf("[ModbusRTU] _addToQueue: task is null\n");
+    #endif
     delete request;
     return false;
   }
   else if (xQueueSend(_queue, reinterpret_cast<void *>(&request), (TickType_t)0) != pdPASS)
   {
+    #ifdef MODBUS_RTU_DEBUG
     Serial.printf("[ModbusRTU] _addToQueue: queue send failed\n");
+    #endif
     delete request;
     return false;
   }
   else
   {
-    Serial.printf("[ModbusRTU] _addToQueue: successfully queued request\n");
+    // Success - no need to log every successful queue operation
     return true;
   }
 }
@@ -362,10 +366,10 @@ void esp32ModbusRTU::_send(uint8_t *data, uint8_t length)
   while (millis() - _lastMillis < _interval)
     delay(1); // respect _interval
   
-  // Debug log
-  #ifdef MODBUS_RTU_DEBUG
-  Serial.printf("[ModbusRTU] Sending %d bytes to address 0x%02X\n", length, data[0]);
-  #endif
+  // Debug log - commented out as it's too verbose
+  // #ifdef MODBUS_RTU_DEBUG
+  // Serial.printf("[ModbusRTU] Sending %d bytes to address 0x%02X\n", length, data[0]);
+  // #endif
   
   // Toggle rtsPin, if necessary
   if (_rtsPin >= 0)
