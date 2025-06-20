@@ -26,7 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined ARDUINO_ARCH_ESP32
 
+#if !defined(MODBUS_DISABLE_WATCHDOG)
 #include <esp_task_wdt.h>
+#endif
 
 // Allow stack size to be configured via build flags
 #ifndef MODBUS_TASK_STACK_SIZE
@@ -34,10 +36,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 // Allow watchdog to be disabled via build flags
-#ifndef MODBUS_DISABLE_WATCHDOG
-#define MODBUS_USE_WATCHDOG 1
+#ifdef MODBUS_DISABLE_WATCHDOG
+  #define MODBUS_USE_WATCHDOG 0
+  #warning "ModbusRTU: Watchdog support disabled by MODBUS_DISABLE_WATCHDOG"
 #else
-#define MODBUS_USE_WATCHDOG 0
+  #define MODBUS_USE_WATCHDOG 1
 #endif
 
 // Static task name to prevent corruption
@@ -102,6 +105,13 @@ esp32ModbusRTU::~esp32ModbusRTU()
 
 void esp32ModbusRTU::begin(int coreID /* = -1 */)
 {
+  // Log watchdog configuration
+  #ifdef MODBUS_DISABLE_WATCHDOG
+    Serial.printf("[ModbusRTU] Watchdog handling DISABLED by build flag\n");
+  #else
+    Serial.printf("[ModbusRTU] Watchdog handling ENABLED (MODBUS_USE_WATCHDOG=%d)\n", MODBUS_USE_WATCHDOG);
+  #endif
+  
   // Check if queue was created successfully
   if (_queue == nullptr) {
     #ifdef MODBUS_RTU_DEBUG
@@ -237,6 +247,17 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
 
 void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
 {
+  // Debug: Log once at task start
+  static bool taskStartLogged = false;
+  if (!taskStartLogged) {
+    taskStartLogged = true;
+    #if MODBUS_USE_WATCHDOG
+    Serial.printf("[ModbusRTU] Task starting WITH watchdog support\n");
+    #else
+    Serial.printf("[ModbusRTU] Task starting WITHOUT watchdog support (disabled)\n");
+    #endif
+  }
+  
   #if MODBUS_USE_WATCHDOG
   // Static flags to track initialization
   static bool watchdogInitialized = false;
