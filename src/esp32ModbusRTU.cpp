@@ -43,35 +43,56 @@ esp32ModbusRTU::esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin) : TimeOutV
                                                                         _shutdown(false)
 {
   _queue = xQueueCreate(QUEUE_SIZE, sizeof(ModbusRequest *));
+  if (_queue == nullptr) {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] ERROR: Failed to create queue!\n");
+    #endif
+  }
 }
 
 esp32ModbusRTU::~esp32ModbusRTU()
 {
   _shutdown = true;
 
-  // Clear the queue
-  xQueueReset(_queue);
+  // Only proceed if queue was successfully created
+  if (_queue != nullptr) {
+    // Clear the queue
+    xQueueReset(_queue);
 
-  // We may be processing a modbus request, then the queue will be empty so we add another to know
-  // that we are not processing a real modbus request
-  readDiscreteInputs(0, 0, 0);
+    // We may be processing a modbus request, then the queue will be empty so we add another to know
+    // that we are not processing a real modbus request
+    readDiscreteInputs(0, 0, 0);
 
-  // Wait until we have processed an outstanding modbus com request if present
-  while (uxQueueMessagesWaiting(_queue) > 0)
-  {
-    delay(1);
+    // Wait until we have processed an outstanding modbus com request if present
+    while (uxQueueMessagesWaiting(_queue) > 0)
+    {
+      delay(1);
+    }
   }
 
-  vTaskDelete(_task);
-  _task = nullptr;
+  // Delete task if it exists
+  if (_task != nullptr) {
+    vTaskDelete(_task);
+    _task = nullptr;
+  }
 
-  auto q = _queue;
-  _queue = nullptr;
-  vQueueDelete(q);
+  // Delete queue if it exists
+  if (_queue != nullptr) {
+    vQueueDelete(_queue);
+    _queue = nullptr;
+  }
 }
 
 void esp32ModbusRTU::begin(int coreID /* = -1 */)
 {
+  // Check if queue was created successfully
+  if (_queue == nullptr) {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] ERROR: Cannot begin - queue is null!\n");
+    #endif
+    return;
+  }
+  
   // If rtsPin is >=0, the RS485 adapter needs send/receive toggle
   if (_rtsPin >= 0)
   {
@@ -79,7 +100,17 @@ void esp32ModbusRTU::begin(int coreID /* = -1 */)
     digitalWrite(_rtsPin, LOW);
   }
   
-  xTaskCreatePinnedToCore((TaskFunction_t)&_handleConnection, "esp32ModbusRTU", MODBUS_TASK_STACK_SIZE, this, 5, &_task, coreID >= 0 ? coreID : NULL);
+  BaseType_t taskResult = xTaskCreatePinnedToCore((TaskFunction_t)&_handleConnection, "esp32ModbusRTU", MODBUS_TASK_STACK_SIZE, this, 5, &_task, coreID >= 0 ? coreID : NULL);
+  
+  if (taskResult == pdPASS && _task != nullptr) {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] Task created successfully, handle=%p\n", _task);
+    #endif
+  } else {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] Failed to create task! Result=%d\n", taskResult);
+    #endif
+  }
   
   // silent interval is at least 3.5x character time
   _interval = 40000 / _serial->baudRate(); // 4 * 1000 * 10 / baud
@@ -155,15 +186,34 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
 {
   if (!request)
   {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] _addToQueue: request is null\n");
+    #endif
     return false;
   }
-  else if (_task == nullptr || xQueueSend(_queue, reinterpret_cast<void *>(&request), (TickType_t)0) != pdPASS)
+  else if (_queue == nullptr)
   {
+    #ifdef MODBUS_RTU_DEBUG
+    Serial.printf("[ModbusRTU] _addToQueue: queue is null\n");
+    #endif
+    delete request;
+    return false;
+  }
+  else if (_task == nullptr)
+  {
+    Serial.printf("[ModbusRTU] _addToQueue: task is null\n");
+    delete request;
+    return false;
+  }
+  else if (xQueueSend(_queue, reinterpret_cast<void *>(&request), (TickType_t)0) != pdPASS)
+  {
+    Serial.printf("[ModbusRTU] _addToQueue: queue send failed\n");
     delete request;
     return false;
   }
   else
   {
+    Serial.printf("[ModbusRTU] _addToQueue: successfully queued request\n");
     return true;
   }
 }
@@ -203,8 +253,19 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
 
 void esp32ModbusRTU::_send(uint8_t *data, uint8_t length)
 {
+  // Validate inputs
+  if (!data || length == 0) {
+    Serial.printf("[ModbusRTU] ERROR: _send called with invalid data or length\n");
+    return;
+  }
+  
   while (millis() - _lastMillis < _interval)
     delay(1); // respect _interval
+  
+  // Debug log
+  #ifdef MODBUS_RTU_DEBUG
+  Serial.printf("[ModbusRTU] Sending %d bytes to address 0x%02X\n", length, data[0]);
+  #endif
   
   // Toggle rtsPin, if necessary
   if (_rtsPin >= 0)
