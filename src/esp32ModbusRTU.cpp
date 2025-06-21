@@ -30,10 +30,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <esp_task_wdt.h>
 #endif
 
-// Allow stack size to be configured via build flags
+// Task configuration
 #ifndef MODBUS_TASK_STACK_SIZE
 #define MODBUS_TASK_STACK_SIZE 5120
 #endif
+
+#ifndef MODBUS_TASK_PRIORITY
+#define MODBUS_TASK_PRIORITY 5
+#endif
+
+#ifndef MODBUS_TASK_NAME
+#define MODBUS_TASK_NAME "ModbusRTU"
+#endif
+
 
 // Allow watchdog to be disabled via build flags
 #ifdef MODBUS_DISABLE_WATCHDOG
@@ -43,21 +52,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   #define MODBUS_USE_WATCHDOG 1
 #endif
 
-// Safety limits to prevent excessive memory allocation
-#ifndef MODBUS_MAX_COILS
-#define MODBUS_MAX_COILS 2000  // Maximum 2000 coils (250 bytes)
-#endif
+// Note: Safety limits are now defined in esp32ModbusRTU.h
 
-#ifndef MODBUS_MAX_REGISTERS
-#define MODBUS_MAX_REGISTERS 125  // Maximum 125 registers (250 bytes)
-#endif
-
-#ifndef MODBUS_MAX_MESSAGE_SIZE
-#define MODBUS_MAX_MESSAGE_SIZE 256  // Maximum Modbus RTU frame size
-#endif
-
-// Static task name to prevent corruption
-static const char* MODBUS_TASK_NAME = "esp32ModbusRTU";
 
 using namespace esp32ModbusRTUInternals; // NOLINT
 
@@ -73,7 +69,7 @@ esp32ModbusRTU::esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin) : TimeOutV
   _queue = xQueueCreate(QUEUE_SIZE, sizeof(ModbusRequest *));
   if (_queue == nullptr) {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] ERROR: Failed to create queue!\n");
+    MODBUS_LOG_E("Failed to create queue!");
     #endif
   }
 }
@@ -119,15 +115,15 @@ void esp32ModbusRTU::begin(int coreID /* = -1 */)
 {
   // Log watchdog configuration
   #ifdef MODBUS_DISABLE_WATCHDOG
-    Serial.printf("[ModbusRTU] Watchdog handling DISABLED by build flag\n");
+    MODBUS_LOG_I("Watchdog handling DISABLED by build flag");
   #else
-    Serial.printf("[ModbusRTU] Watchdog handling ENABLED (MODBUS_USE_WATCHDOG=%d)\n", MODBUS_USE_WATCHDOG);
+    MODBUS_LOG_I("Watchdog handling ENABLED (MODBUS_USE_WATCHDOG=%d)", MODBUS_USE_WATCHDOG);
   #endif
   
   // Check if queue was created successfully
   if (_queue == nullptr) {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] ERROR: Cannot begin - queue is null!\n");
+    MODBUS_LOG_E("Cannot begin - queue is null!");
     #endif
     return;
   }
@@ -139,15 +135,15 @@ void esp32ModbusRTU::begin(int coreID /* = -1 */)
     digitalWrite(_rtsPin, LOW);
   }
   
-  BaseType_t taskResult = xTaskCreatePinnedToCore((TaskFunction_t)&_handleConnection, MODBUS_TASK_NAME, MODBUS_TASK_STACK_SIZE, this, 5, &_task, coreID >= 0 ? coreID : NULL);
+  BaseType_t taskResult = xTaskCreatePinnedToCore((TaskFunction_t)&_handleConnection, MODBUS_TASK_NAME, MODBUS_TASK_STACK_SIZE, this, MODBUS_TASK_PRIORITY, &_task, coreID >= 0 ? coreID : NULL);
   
   if (taskResult == pdPASS && _task != nullptr) {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] Task created successfully, handle=%p\n", _task);
+    MODBUS_LOG_D("Task created successfully, handle=%p", _task);
     #endif
   } else {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] Failed to create task! Result=%d\n", taskResult);
+    MODBUS_LOG_E("Failed to create task! Result=%d", taskResult);
     #endif
   }
   
@@ -198,7 +194,7 @@ bool esp32ModbusRTU::writeMultipleCoils(uint8_t slaveAddress, uint16_t address, 
   // Validate parameters
   if (numberCoils == 0 || numberCoils > MODBUS_MAX_COILS || values == nullptr) {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] writeMultipleCoils: Invalid parameters (coils=%d, max=%d)\n", numberCoils, MODBUS_MAX_COILS);
+    MODBUS_LOG_E("writeMultipleCoils: Invalid parameters (coils=%d, max=%d)", numberCoils, MODBUS_MAX_COILS);
     #endif
     return false;
   }
@@ -212,7 +208,7 @@ bool esp32ModbusRTU::writeMultHoldingRegisters(uint8_t slaveAddress, uint16_t ad
   // Validate parameters
   if (numberRegisters == 0 || numberRegisters > MODBUS_MAX_REGISTERS || data == nullptr) {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] writeMultHoldingRegisters: Invalid parameters (registers=%d, max=%d)\n", numberRegisters, MODBUS_MAX_REGISTERS);
+    MODBUS_LOG_E("writeMultHoldingRegisters: Invalid parameters (registers=%d, max=%d)", numberRegisters, MODBUS_MAX_REGISTERS);
     #endif
     return false;
   }
@@ -228,7 +224,7 @@ bool esp32ModbusRTU::readWriteMultipleRegisters(uint8_t slaveAddress, uint16_t r
       writeCount == 0 || writeCount > MODBUS_MAX_REGISTERS || 
       writeData == nullptr) {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] readWriteMultipleRegisters: Invalid parameters (read=%d, write=%d, max=%d)\n", 
+    MODBUS_LOG_E("readWriteMultipleRegisters: Invalid parameters (read=%d, write=%d, max=%d)", 
                   readCount, writeCount, MODBUS_MAX_REGISTERS);
     #endif
     return false;
@@ -253,14 +249,14 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
   if (!request)
   {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] _addToQueue: request is null\n");
+    MODBUS_LOG_E("_addToQueue: request is null");
     #endif
     return false;
   }
   else if (_queue == nullptr)
   {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] _addToQueue: queue is null\n");
+    MODBUS_LOG_E("_addToQueue: queue is null");
     #endif
     delete request;
     return false;
@@ -268,7 +264,7 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
   else if (_task == nullptr)
   {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] _addToQueue: task is null\n");
+    MODBUS_LOG_E("_addToQueue: task is null");
     #endif
     delete request;
     return false;
@@ -276,7 +272,7 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
   else if (xQueueSend(_queue, reinterpret_cast<void *>(&request), (TickType_t)0) != pdPASS)
   {
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] _addToQueue: queue send failed\n");
+    MODBUS_LOG_E("_addToQueue: queue send failed");
     #endif
     delete request;
     return false;
@@ -295,9 +291,9 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
   if (!taskStartLogged) {
     taskStartLogged = true;
     #if MODBUS_USE_WATCHDOG
-    Serial.printf("[ModbusRTU] Task starting WITH watchdog support\n");
+    MODBUS_LOG_I("Task starting WITH watchdog support");
     #else
-    Serial.printf("[ModbusRTU] Task starting WITHOUT watchdog support (disabled)\n");
+    MODBUS_LOG_I("Task starting WITHOUT watchdog support (disabled)");
     #endif
   }
   
@@ -315,7 +311,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
     esp_err_t status = esp_task_wdt_status(currentTask);
     
     #ifdef MODBUS_RTU_DEBUG
-    Serial.printf("[ModbusRTU] Watchdog status check: %d (ESP_OK=%d, ESP_ERR_NOT_FOUND=%d)\n", 
+    MODBUS_LOG_D("Watchdog status check: %d (ESP_OK=%d, ESP_ERR_NOT_FOUND=%d)", 
                   status, ESP_OK, ESP_ERR_NOT_FOUND);
     #endif
     
@@ -325,22 +321,22 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       if (result == ESP_OK) {
         watchdogActive = true;
         #ifdef MODBUS_RTU_DEBUG
-        Serial.printf("[ModbusRTU] Task successfully registered with watchdog\n");
+        MODBUS_LOG_I("Task successfully registered with watchdog");
         #endif
       } else {
         #ifdef MODBUS_RTU_DEBUG
-        Serial.printf("[ModbusRTU] Failed to register with watchdog: error=%d\n", result);
+        MODBUS_LOG_E("Failed to register with watchdog: error=%d", result);
         #endif
       }
     } else if (status == ESP_OK) {
       // Already subscribed (probably by the main application)
       watchdogActive = true;
       #ifdef MODBUS_RTU_DEBUG
-      Serial.printf("[ModbusRTU] Task already registered with watchdog by external code, using existing registration\n");
+      MODBUS_LOG_I("Task already registered with watchdog by external code, using existing registration");
       #endif
     } else {
       #ifdef MODBUS_RTU_DEBUG
-      Serial.printf("[ModbusRTU] Unexpected watchdog status: %d\n", status);
+      MODBUS_LOG_W("Unexpected watchdog status: %d", status);
       #endif
     }
   }
@@ -362,15 +358,22 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       instance->_send(request->getMessage(), request->getSize());
       ModbusResponse *response = instance->_receive(request);
       
-      if (response->isSucces())
+      if (response->isSuccess())
       {
         if (instance->_onData)
           instance->_onData(response->getSlaveAddress(), response->getFunctionCode(), request->getAddress(), response->getData(), response->getByteCount());
       }
       else
       {
+        // Log basic protocol errors (always visible)
+        esp32Modbus::Error error = response->getError();
+        MODBUS_LOG_E("Modbus error from address 0x%02X: %s (0x%02X)", 
+                     request->getSlaveAddress(), 
+                     esp32Modbus::getErrorDescription(error), 
+                     static_cast<uint8_t>(error));
+        
         if (instance->_onError)
-          instance->_onError(response->getError());
+          instance->_onError(error);
       }
       delete request;  // object created in public methods
       delete response; // object created in _receive()
@@ -410,17 +413,17 @@ void esp32ModbusRTU::_send(uint8_t *data, uint8_t length)
 {
   // Validate inputs
   if (!data || length == 0) {
-    Serial.printf("[ModbusRTU] ERROR: _send called with invalid data or length\n");
+    MODBUS_LOG_E("_send called with invalid data or length");
     return;
   }
   
   while (millis() - _lastMillis < _interval)
     delay(1); // respect _interval
   
-  // Debug log - commented out as it's too verbose
-  // #ifdef MODBUS_RTU_DEBUG
-  // Serial.printf("[ModbusRTU] Sending %d bytes to address 0x%02X\n", length, data[0]);
-  // #endif
+  // Debug log
+  #ifdef MODBUS_RTU_DEBUG
+  MODBUS_LOG_D("Sending %d bytes to address 0x%02X", length, data[0]);
+  #endif
   
   // Toggle rtsPin, if necessary
   if (_rtsPin >= 0)

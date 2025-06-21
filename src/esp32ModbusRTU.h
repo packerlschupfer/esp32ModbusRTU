@@ -27,11 +27,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(ARDUINO_ARCH_ESP32) || defined(ESP32) || defined(ESP_PLATFORM)
 
+// Default configuration
 #ifndef QUEUE_SIZE
-#define QUEUE_SIZE 16  // Reduced from 20 to save memory
+#define QUEUE_SIZE 16  // Number of requests that can be queued
 #endif
+
 #ifndef TIMEOUT_MS
-#define TIMEOUT_MS 5000
+#define TIMEOUT_MS 5000  // Default timeout in milliseconds
+#endif
+
+// Maximum limits for memory safety
+#ifndef MODBUS_MAX_REGISTERS
+#define MODBUS_MAX_REGISTERS 125  // Maximum registers in single request
+#endif
+
+#ifndef MODBUS_MAX_COILS  
+#define MODBUS_MAX_COILS 2000  // Maximum coils in single request
+#endif
+
+#ifndef MODBUS_MAX_MESSAGE_SIZE
+#define MODBUS_MAX_MESSAGE_SIZE 256  // Maximum message size
 #endif
 
 #include <functional>
@@ -47,6 +62,23 @@ extern "C"
 
 #include "esp32ModbusTypeDefs.h"
 #include "ModbusMessage.h"
+
+// Logging configuration
+#ifdef MODBUS_USE_CUSTOM_LOGGER
+  #include "Logger.h"
+  #define MODBUS_LOG_TAG "ModbusRTU"
+  #define MODBUS_LOG_E(...) getLogger().log(ESP_LOG_ERROR, MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_W(...) getLogger().log(ESP_LOG_WARN, MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_I(...) getLogger().log(ESP_LOG_INFO, MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_D(...) getLogger().log(ESP_LOG_DEBUG, MODBUS_LOG_TAG, __VA_ARGS__)
+#else
+  #include <esp_log.h>
+  #define MODBUS_LOG_TAG "ModbusRTU"
+  #define MODBUS_LOG_E(...) ESP_LOGE(MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_W(...) ESP_LOGW(MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_I(...) ESP_LOGI(MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_D(...) ESP_LOGD(MODBUS_LOG_TAG, __VA_ARGS__)
+#endif
 
 class esp32ModbusRTU
 {
