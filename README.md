@@ -1,23 +1,30 @@
-# ARCHIVED
-
-This repo is archived no longer actively maintained.
-
-For a complete Modbus library for ESP32, I invite you to https://github.com/eModbus/eModbus
-
 # esp32ModbusRTU
 
 [![Build Status](https://travis-ci.com/bertmelis/esp32ModbusRTU.svg?branch=master)](https://travis-ci.com/bertmelis/esp32ModbusRTU)
 
-This is a non blocking Modbus client (master) for ESP32.
+A non-blocking Modbus RTU client (master) library for ESP32 with modern logging, enhanced error handling, and memory safety features.
+
+## Recent Improvements (v0.1.0)
+- Modern ESP32 logging system with configurable log levels
+- Optional custom Logger support
+- Improved memory safety and error handling
+- Better configuration options
+- See [CHANGELOG.md](CHANGELOG.md) for details
 
 -  Modbus Client aka Master for ESP32
 -  built for the [Arduino framework for ESP32](https://github.com/espressif/arduino-esp32)
 -  non blocking API. Blocking code is in a seperate task
 -  only RS485 half duplex (optionally using a GPIO as RTS (DE/RS)) is implemented
 -  function codes implemented:
+  -  read coils (01)
   -  read discrete inputs (02)
   -  read holding registers (03)
   -  read input registers (04)
+  -  write single coil (05)
+  -  write single register (06)
+  -  write multiple coils (15/0x0F)
+  -  write multiple registers (16/0x10)
+  -  read/write multiple registers (23/0x17)
 -  similar API as my [esp32ModbusTCP](https://github.com/bertmelis/esp32ModbusTCP) implementation
 
 ## Watchdog Configuration
@@ -38,11 +45,37 @@ This must be defined before including the library headers.
 
 I have this library in use myself with quite some uptime (only using FC3 -read holding registers- though).
 
-Things to do, ranked:
+## Recent Improvements
 
--  add debug info
--  unit testing for ModbusMessage
--  implement missing function codes (no priority, pull requests happily accepted)
+-  Enhanced error handling with new error types (INVALID_PARAMETER, QUEUE_FULL, MEMORY_ALLOCATION_FAILED, INVALID_RESPONSE)
+-  Memory safety improvements with bounds checking
+-  Response validation (slave address and function code verification)
+-  Configurable task priority via MODBUS_TASK_PRIORITY
+-  Constants for magic numbers improving code clarity
+-  Watchdog timer support with disable option
+-  Custom logger support
+
+## Configuration Options
+
+### Build Flags
+
+-  `QUEUE_SIZE` - Request queue size (default: 16)
+-  `TIMEOUT_MS` - Default timeout in milliseconds (default: 5000)
+-  `MODBUS_TASK_STACK_SIZE` - Task stack size (default: 5120)
+-  `MODBUS_TASK_PRIORITY` - Task priority (default: 5)
+-  `MODBUS_MAX_COILS` - Maximum coils in single request (default: 2000)
+-  `MODBUS_MAX_REGISTERS` - Maximum registers in single request (default: 125)
+-  `MODBUS_DISABLE_WATCHDOG` - Disable watchdog timer support
+-  `MODBUS_USE_CUSTOM_LOGGER` - Use custom logger instead of ESP-IDF logging
+-  `MODBUS_RTU_DEBUG` - Enable debug logging
+
+Things to do:
+
+-  Unit testing for ModbusMessage
+-  Add automatic retry mechanism
+-  Implement broadcast support (address 0)
+-  Add connection state management
+-  Add statistics/metrics collection
 
 ## Installation
 
