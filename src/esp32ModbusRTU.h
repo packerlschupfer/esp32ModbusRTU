@@ -67,10 +67,10 @@ extern "C"
 #ifdef MODBUS_USE_CUSTOM_LOGGER
   #include "Logger.h"
   #define MODBUS_LOG_TAG "ModbusRTU"
-  #define MODBUS_LOG_E(...) getLogger().log(ESP_LOG_ERROR, MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_W(...) getLogger().log(ESP_LOG_WARN, MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_I(...) getLogger().log(ESP_LOG_INFO, MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_D(...) getLogger().log(ESP_LOG_DEBUG, MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_E(...) Logger::getInstance().log(ESP_LOG_ERROR, MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_W(...) Logger::getInstance().log(ESP_LOG_WARN, MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_I(...) Logger::getInstance().log(ESP_LOG_INFO, MODBUS_LOG_TAG, __VA_ARGS__)
+  #define MODBUS_LOG_D(...) Logger::getInstance().log(ESP_LOG_DEBUG, MODBUS_LOG_TAG, __VA_ARGS__)
 #else
   #include <esp_log.h>
   #define MODBUS_LOG_TAG "ModbusRTU"

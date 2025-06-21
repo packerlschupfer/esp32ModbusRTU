@@ -33,11 +33,11 @@ In your main library header file (e.g., `MyLibrary.h`), add:
 #ifdef USE_CUSTOM_LOGGER
   #include "Logger.h"
   #define MYLIB_LOG_TAG "MyLibrary"
-  #define MYLIB_LOG_E(...) getLogger().log(ESP_LOG_ERROR, MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_W(...) getLogger().log(ESP_LOG_WARN, MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_I(...) getLogger().log(ESP_LOG_INFO, MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_D(...) getLogger().log(ESP_LOG_DEBUG, MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_V(...) getLogger().log(ESP_LOG_VERBOSE, MYLIB_LOG_TAG, __VA_ARGS__)
+  #define MYLIB_LOG_E(...) Logger::getInstance().log(ESP_LOG_ERROR, MYLIB_LOG_TAG, __VA_ARGS__)
+  #define MYLIB_LOG_W(...) Logger::getInstance().log(ESP_LOG_WARN, MYLIB_LOG_TAG, __VA_ARGS__)
+  #define MYLIB_LOG_I(...) Logger::getInstance().log(ESP_LOG_INFO, MYLIB_LOG_TAG, __VA_ARGS__)
+  #define MYLIB_LOG_D(...) Logger::getInstance().log(ESP_LOG_DEBUG, MYLIB_LOG_TAG, __VA_ARGS__)
+  #define MYLIB_LOG_V(...) Logger::getInstance().log(ESP_LOG_VERBOSE, MYLIB_LOG_TAG, __VA_ARGS__)
 #else
   #include <esp_log.h>
   #define MYLIB_LOG_TAG "MyLibrary"

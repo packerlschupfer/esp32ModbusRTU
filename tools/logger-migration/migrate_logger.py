@@ -36,11 +36,11 @@ def create_logging_header(lib_name):
 #ifdef {prefix}_USE_CUSTOM_LOGGER
   #include "Logger.h"
   #define {prefix}_LOG_TAG "{lib_name}"
-  #define {prefix}_LOG_E(...) getLogger().log(ESP_LOG_ERROR, {prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_W(...) getLogger().log(ESP_LOG_WARN, {prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_I(...) getLogger().log(ESP_LOG_INFO, {prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_D(...) getLogger().log(ESP_LOG_DEBUG, {prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_V(...) getLogger().log(ESP_LOG_VERBOSE, {prefix}_LOG_TAG, __VA_ARGS__)
+  #define {prefix}_LOG_E(...) Logger::getInstance().log(ESP_LOG_ERROR, {prefix}_LOG_TAG, __VA_ARGS__)
+  #define {prefix}_LOG_W(...) Logger::getInstance().log(ESP_LOG_WARN, {prefix}_LOG_TAG, __VA_ARGS__)
+  #define {prefix}_LOG_I(...) Logger::getInstance().log(ESP_LOG_INFO, {prefix}_LOG_TAG, __VA_ARGS__)
+  #define {prefix}_LOG_D(...) Logger::getInstance().log(ESP_LOG_DEBUG, {prefix}_LOG_TAG, __VA_ARGS__)
+  #define {prefix}_LOG_V(...) Logger::getInstance().log(ESP_LOG_VERBOSE, {prefix}_LOG_TAG, __VA_ARGS__)
 #else
   #include <esp_log.h>
   #define {prefix}_LOG_TAG "{lib_name}"
