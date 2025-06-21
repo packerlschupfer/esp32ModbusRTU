@@ -33,7 +33,7 @@ MODBUS over serial line specification and implementation guide V1.02
 
 using namespace esp32ModbusRTUInternals;  // NOLINT
 
-static uint8_t crcHiTable[] = {
+static const uint8_t crcHiTable[] = {
   0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
   0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
   0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01,
@@ -54,7 +54,7 @@ static uint8_t crcHiTable[] = {
   0x40
 };
 
-static uint8_t crcLoTable[] = {
+static const uint8_t crcLoTable[] = {
   0x00, 0xC0, 0xC1, 0x01, 0xC3, 0x03, 0x02, 0xC2, 0xC6, 0x06, 0x07, 0xC7, 0x05, 0xC5, 0xC4,
   0x04, 0xCC, 0x0C, 0x0D, 0xCD, 0x0F, 0xCF, 0xCE, 0x0E, 0x0A, 0xCA, 0xCB, 0x0B, 0xC9, 0x09,
   0x08, 0xC8, 0xD8, 0x18, 0x19, 0xD9, 0x1B, 0xDB, 0xDA, 0x1A, 0x1E, 0xDE, 0xDF, 0x1F, 0xDD,
@@ -104,7 +104,7 @@ ModbusMessage::ModbusMessage(uint8_t length) :
   _buffer(nullptr),
   _length(length),
   _index(0) {
-  if (length < 5) _length = 5;  // minimum for Modbus Exception codes
+  if (length < MODBUS_MIN_RESPONSE_LENGTH) _length = MODBUS_MIN_RESPONSE_LENGTH;  // minimum for Modbus Exception codes
   
   // Safety check to prevent excessive allocation
   if (_length > 255) {  // Max uint8_t value, reasonable for Modbus RTU
@@ -132,11 +132,22 @@ uint8_t ModbusMessage::getSize() {
 }
 
 void ModbusMessage::add(uint8_t value) {
-  if (_buffer != nullptr && _index < _length) {
-    _buffer[_index++] = value;
+  if (_buffer == nullptr) {
+    #ifdef MODBUS_RTU_DEBUG
+    // Can't use MODBUS_LOG_E here as it would create circular dependency
+    // This is a critical error that should be logged
+    #endif
+    return;
   }
-  // Note: Silently dropping data if buffer is full or null
-  // Could add error logging here if needed
+  
+  if (_index >= _length) {
+    #ifdef MODBUS_RTU_DEBUG
+    // Buffer overflow attempt - this indicates a programming error
+    #endif
+    return;
+  }
+  
+  _buffer[_index++] = value;
 }
 
 ModbusRequest::ModbusRequest(uint8_t length) :
@@ -245,8 +256,9 @@ ModbusRequest05::ModbusRequest05(uint8_t slaveAddress, uint16_t address, bool va
   add(_functionCode);
   add(high(_address));
   add(low(_address));
-  add(value ? 0xFF : 0x00);  // 0xFF00 for true, 0x0000 for false
-  add(0x00);
+  uint16_t coilValue = value ? MODBUS_COIL_ON : MODBUS_COIL_OFF;
+  add(high(coilValue));
+  add(low(coilValue));
   uint16_t CRC = CRC16(_buffer, 6);
   add(low(CRC));
   add(high(CRC));
@@ -375,36 +387,38 @@ size_t ModbusRequest17::responseLength() {
 ModbusResponse::ModbusResponse(uint8_t length, ModbusRequest* request) :
   ModbusMessage(length),
   _request(request),
-  _error(esp32Modbus::SUCCES) {}
+  _error(esp32Modbus::SUCCESS) {}
 
 bool ModbusResponse::isComplete() {
-  if (_buffer[1] > 0x80 && _index == 5) {  // 5: slaveAddress(1), errorCode(1), CRC(2) + indexed
+  if (_buffer[1] & MODBUS_ERROR_FLAG && _index == MODBUS_EXCEPTION_RESPONSE_LENGTH) {  // Exception response
     return true;
   }
   if (_index == _request->responseLength()) return true;
   return false;
 }
 
-bool ModbusResponse::isSucces() {
+bool ModbusResponse::isSuccess() {
   if (!isComplete()) {
     _error = esp32Modbus::TIMEOUT;
-  } else if (_buffer[1] > 0x80) {
+  } else if (_buffer[1] & MODBUS_ERROR_FLAG) {
     _error = static_cast<esp32Modbus::Error>(_buffer[2]);
   } else if (!checkCRC()) {
     _error = esp32Modbus::CRC_ERROR;
-  // TODO(bertmelis): add other checks
+  } else if (_buffer[0] != _request->getSlaveAddress()) {
+    // Response from wrong slave
+    _error = esp32Modbus::INVALID_SLAVE;
+  } else if (_buffer[1] != _request->getFunctionCode()) {
+    // Function code mismatch (not an error response)
+    _error = esp32Modbus::INVALID_RESPONSE;
   } else {
-    _error = esp32Modbus::SUCCES;
+    // Additional validation could be added here for specific function codes
+    _error = esp32Modbus::SUCCESS;
   }
-  if (_error == esp32Modbus::SUCCES) {
-    return true;
-  } else {
-    return false;
-  }
+  return (_error == esp32Modbus::SUCCESS);
 }
 
 bool ModbusResponse::checkCRC() {
-  uint16_t CRC = CRC16(_buffer, _length - 2);
+  uint16_t CRC = CRC16(_buffer, _length - MODBUS_CRC_LENGTH);
   if (low(CRC) == _buffer[_length - 2] && high(CRC) == _buffer[_length -1]) {
     return true;
   } else {

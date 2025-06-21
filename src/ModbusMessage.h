@@ -32,6 +32,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace esp32ModbusRTUInternals {
 
+// Constants for Modbus protocol
+constexpr uint8_t MODBUS_ERROR_FLAG = 0x80;  // MSB set indicates error response
+constexpr uint8_t MODBUS_EXCEPTION_RESPONSE_LENGTH = 5;  // slave(1) + fc(1) + exception(1) + crc(2)
+constexpr uint8_t MODBUS_MIN_RESPONSE_LENGTH = 5;  // Minimum valid response length
+constexpr uint8_t MODBUS_CRC_LENGTH = 2;  // CRC is always 2 bytes
+constexpr uint16_t MODBUS_COIL_ON = 0xFF00;  // Value for ON coil
+constexpr uint16_t MODBUS_COIL_OFF = 0x0000;  // Value for OFF coil
+
 class ModbusMessage {
  public:
   virtual ~ModbusMessage();
@@ -52,6 +60,8 @@ class ModbusRequest : public ModbusMessage {
  public:
   virtual size_t responseLength() = 0;
   uint16_t getAddress();
+  uint8_t getSlaveAddress() const { return _slaveAddress; }
+  uint8_t getFunctionCode() const { return _functionCode; }
 
  protected:
   explicit ModbusRequest(uint8_t length);
@@ -128,7 +138,8 @@ class ModbusResponse : public ModbusMessage {
  public:
   explicit ModbusResponse(uint8_t length, ModbusRequest* request);
   bool isComplete();
-  bool isSucces();
+  bool isSuccess();  // Correct spelling
+  bool isSucces() { return isSuccess(); }  // Deprecated: kept for backward compatibility
   bool checkCRC();
   esp32Modbus::Error getError() const;
 

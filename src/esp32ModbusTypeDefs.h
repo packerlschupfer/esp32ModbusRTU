@@ -45,7 +45,8 @@ enum FunctionCode : uint8_t {
 };
 
 enum Error : uint8_t {
-  SUCCES                = 0x00,
+  SUCCESS               = 0x00,  // Correct spelling
+  SUCCES                = 0x00,  // Deprecated: kept for backward compatibility
   ILLEGAL_FUNCTION      = 0x01,
   ILLEGAL_DATA_ADDRESS  = 0x02,
   ILLEGAL_DATA_VALUE    = 0x03,
@@ -58,13 +59,42 @@ enum Error : uint8_t {
   INVALID_SLAVE         = 0xE1,
   INVALID_FUNCTION      = 0xE2,
   CRC_ERROR             = 0xE3,  // only for Modbus-RTU
-  COMM_ERROR            = 0xE4  // general communication error
+  COMM_ERROR            = 0xE4,  // general communication error
+  INVALID_PARAMETER     = 0xE5,  // invalid function parameter
+  QUEUE_FULL            = 0xE6,  // request queue is full
+  MEMORY_ALLOCATION_FAILED = 0xE7,  // memory allocation failed
+  INVALID_RESPONSE      = 0xE8   // response validation failed
 };
 
 typedef std::function<void(uint16_t, uint8_t, esp32Modbus::FunctionCode, uint8_t*, uint16_t)> MBTCPOnData;
 typedef std::function<void(uint8_t, esp32Modbus::FunctionCode, uint16_t, uint8_t*, uint16_t)> MBRTUOnData;
 typedef std::function<void(uint16_t, esp32Modbus::Error)> MBTCPOnError;
 typedef std::function<void(esp32Modbus::Error)> MBRTUOnError;
+
+// Helper function to get error description
+inline const char* getErrorDescription(Error error) {
+  switch (error) {
+    case SUCCESS: return "Success";
+    case ILLEGAL_FUNCTION: return "Illegal function";
+    case ILLEGAL_DATA_ADDRESS: return "Illegal data address";
+    case ILLEGAL_DATA_VALUE: return "Illegal data value";
+    case SERVER_DEVICE_FAILURE: return "Server device failure";
+    case ACKNOWLEDGE: return "Acknowledge";
+    case SERVER_DEVICE_BUSY: return "Server device busy";
+    case NEGATIVE_ACKNOWLEDGE: return "Negative acknowledge";
+    case MEMORY_PARITY_ERROR: return "Memory parity error";
+    case TIMEOUT: return "Timeout";
+    case INVALID_SLAVE: return "Invalid slave address";
+    case INVALID_FUNCTION: return "Invalid function";
+    case CRC_ERROR: return "CRC error";
+    case COMM_ERROR: return "Communication error";
+    case INVALID_PARAMETER: return "Invalid parameter";
+    case QUEUE_FULL: return "Request queue full";
+    case MEMORY_ALLOCATION_FAILED: return "Memory allocation failed";
+    case INVALID_RESPONSE: return "Invalid response";
+    default: return "Unknown error";
+  }
+}
 
 }  // namespace esp32Modbus
 
