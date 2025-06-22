@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0] - 2024-01-22
+
+### Changed
+- Made logging system C++11 compatible (removed C++17 dependencies)
+- LogInterface is now optional - only required when USE_CUSTOM_LOGGER is defined
+- Library compiles without any external dependencies by default
+- Improved flexibility for embedded systems with limited C++ standard support
+
+### Added
+- MODBUS_LOG_V macro for verbose logging
+- Better documentation about C++11 compatibility
+
+### Removed
+- Hard dependency on LogInterface library
+
 ## [0.2.0] - 2024-01-21
 
 ### Changed

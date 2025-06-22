@@ -1,12 +1,14 @@
 /*
-Simple Modbus RTU Example
+Simple Modbus RTU Example with C++11 Compatible Logging
 
 This example demonstrates basic Modbus RTU communication.
 It reads holding registers from a Modbus device.
 
 Logging options:
 1. Default (no configuration needed) - Uses ESP-IDF logging
-2. Custom Logger - Define USE_CUSTOM_LOGGER and include Logger setup
+2. Custom Logger - Define USE_CUSTOM_LOGGER in platformio.ini
+
+This library is C++11 compatible and doesn't require C++17 features.
 
 To enable debug logging:
 - Define MODBUS_RTU_DEBUG in your build flags
@@ -14,10 +16,11 @@ To enable debug logging:
 
 #include <Arduino.h>
 
-// Optional: To use custom Logger instead of ESP-IDF
-// #define USE_CUSTOM_LOGGER
-// #include "Logger.h"
-// #include "LogInterfaceImpl.h"
+// When using custom Logger (define USE_CUSTOM_LOGGER in platformio.ini)
+#ifdef USE_CUSTOM_LOGGER
+#include "Logger.h"
+#include "LogInterfaceImpl.h"
+#endif
 
 #include <esp32ModbusRTU.h>
 

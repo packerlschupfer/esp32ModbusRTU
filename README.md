@@ -4,10 +4,11 @@
 
 A non-blocking Modbus RTU client (master) library for ESP32 with modern logging, enhanced error handling, and memory safety features.
 
-## Recent Improvements (v0.2.0)
-- Zero-overhead logging using LogInterface
-- Automatic support for both ESP-IDF and custom Logger
-- No forced Logger instantiation (~17KB saved when not using custom Logger)
+## Recent Improvements (v0.3.0)
+- C++11 compatible flexible logging system
+- Zero-overhead logging - uses ESP-IDF by default
+- Optional custom Logger support via USE_CUSTOM_LOGGER flag
+- No forced dependencies - LogInterface only required when USE_CUSTOM_LOGGER is defined
 - Improved memory safety and error handling
 - Better configuration options
 - See [CHANGELOG.md](CHANGELOG.md) for details
@@ -30,10 +31,11 @@ A non-blocking Modbus RTU client (master) library for ESP32 with modern logging,
 
 ## Logging
 
-The library uses LogInterface for flexible, zero-overhead logging:
+The library supports flexible, zero-overhead logging with C++11 compatibility:
 
-- **Default**: Uses ESP-IDF logging (no memory overhead)
-- **Custom Logger**: Define `USE_CUSTOM_LOGGER` in your application to use custom Logger
+- **Default**: Uses ESP-IDF logging (no external dependencies)
+- **Custom Logger**: Define `USE_CUSTOM_LOGGER` in your build flags to use custom Logger
+- **C++11 Compatible**: No C++17 features required
 
 See [LOGGING.md](LOGGING.md) for configuration details.
 
