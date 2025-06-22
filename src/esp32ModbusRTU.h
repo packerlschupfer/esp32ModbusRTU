@@ -63,36 +63,8 @@ extern "C"
 #include "esp32ModbusTypeDefs.h"
 #include "ModbusMessage.h"
 
-// C++11 compatible logging configuration
-// Define library log tag
-#define MODBUS_LOG_TAG "ModbusRTU"
-
-// Check if custom logger is requested
-#ifdef USE_CUSTOM_LOGGER
-    // When custom logger is enabled, use LogInterface
-    // This assumes LogInterface.h is available when USE_CUSTOM_LOGGER is defined
-    #include "LogInterface.h"
-    #define MODBUS_LOG_E(...) LOG_ERROR(MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_W(...) LOG_WARN(MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_I(...) LOG_INFO(MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_D(...) LOG_DEBUG(MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_V(...) LOG_VERBOSE(MODBUS_LOG_TAG, __VA_ARGS__)
-#else
-    // Fall back to ESP-IDF logging
-    #include <esp_log.h>
-    #define MODBUS_LOG_E(...) ESP_LOGE(MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_W(...) ESP_LOGW(MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_I(...) ESP_LOGI(MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_D(...) ESP_LOGD(MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_V(...) ESP_LOGV(MODBUS_LOG_TAG, __VA_ARGS__)
-#endif
-
-// Optional debug logging controlled by library-specific flag
-#ifdef MODBUS_RTU_DEBUG
-    #define MODBUS_LOG_DEBUG(...) MODBUS_LOG_D(__VA_ARGS__)
-#else
-    #define MODBUS_LOG_DEBUG(...) // No-op
-#endif
+// Logging configuration
+#include "esp32ModbusRTULogging.h"
 
 class esp32ModbusRTU
 {

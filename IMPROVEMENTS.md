@@ -1,5 +1,15 @@
 # Recent Improvements to esp32ModbusRTU
 
+## v0.4.0 - Production-Ready Debug Logging
+- Implemented production-ready logging pattern
+- Debug/Verbose logs completely compiled out without MODBUS_RTU_DEBUG flag
+- Added advanced debug features:
+  - Protocol-level tracing
+  - Buffer hex dumps
+  - Performance timing macros
+- Created dedicated logging header (esp32ModbusRTULogging.h)
+- Zero overhead in production builds
+
 ## v0.3.0 - C++11 Compatible Logging
 - Made logging system fully C++11 compatible
 - Removed hard dependency on LogInterface

@@ -355,8 +355,10 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       }
 
       // block and wait for queued item
+      MODBUS_TIME_START();
       instance->_send(request->getMessage(), request->getSize());
       ModbusResponse *response = instance->_receive(request);
+      MODBUS_TIME_END("Request/Response cycle");
       
       if (response->isSuccess())
       {
@@ -420,10 +422,9 @@ void esp32ModbusRTU::_send(uint8_t *data, uint8_t length)
   while (millis() - _lastMillis < _interval)
     delay(1); // respect _interval
   
-  // Debug log
-  #ifdef MODBUS_RTU_DEBUG
-  MODBUS_LOG_D("Sending %d bytes to address 0x%02X", length, data[0]);
-  #endif
+  // Debug logging with buffer dump
+  MODBUS_LOG_PROTO("Sending %d bytes to address 0x%02X, FC=0x%02X", length, data[0], data[1]);
+  MODBUS_DUMP_BUFFER("TX", data, length);
   
   // Toggle rtsPin, if necessary
   if (_rtsPin >= 0)
@@ -461,10 +462,13 @@ ModbusResponse *esp32ModbusRTU::_receive(ModbusRequest *request)
     if (response->isComplete())
     {
       _lastMillis = millis();
+      MODBUS_LOG_PROTO("Response complete: %d bytes received", response->getSize());
+      MODBUS_DUMP_BUFFER("RX", response->getData(), response->getSize());
       break;
     }
     if (millis() - _lastMillis > TimeOutValue)
     {
+      MODBUS_LOG_PROTO("Response timeout after %lu ms", TimeOutValue);
       break;
     }
     delay(1); // take care of watchdog

@@ -1,14 +1,14 @@
 # Logging Configuration
 
-The esp32ModbusRTU library supports flexible zero-overhead logging with C++11 compatibility. It can use either ESP-IDF logging (default) or custom Logger without forcing any dependencies.
+The esp32ModbusRTU library supports flexible, production-ready logging with zero overhead in release builds.
 
 ## Default: ESP-IDF Logging
 
 By default, the library uses ESP-IDF's built-in logging system:
 - Log messages use the tag "ModbusRTU"
-- Control log levels with `esp_log_level_set("ModbusRTU", ESP_LOG_LEVEL)`
-- Available levels: ERROR, WARN, INFO, DEBUG, VERBOSE
-- Zero memory overhead - no external dependencies
+- Only ERROR, WARN, and INFO levels are compiled in release builds
+- DEBUG and VERBOSE are completely compiled out (zero overhead)
+- No external dependencies
 
 Example:
 ```cpp
@@ -16,19 +16,36 @@ Example:
 
 void setup() {
     // Library will use ESP-IDF logging automatically
+    // Only Error, Warn, Info messages in release builds
     esp32ModbusRTU modbus(&Serial1, 16);
     modbus.begin();
 }
 ```
 
+## Debug Logging
+
+To enable debug/verbose logging for development:
+
+```ini
+build_flags = 
+    -D MODBUS_RTU_DEBUG  # Enable debug messages
+```
+
+With debug enabled, you get:
+- Protocol-level messages (requests/responses)
+- Performance timing information
+- Buffer hex dumps
+- Detailed state transitions
+
 ## Optional: Custom Logger
 
-To route logs through a custom Logger implementation, define `USE_CUSTOM_LOGGER` in your build flags.
+To route logs through a custom Logger implementation:
 
 ### Setup in platformio.ini:
 ```ini
 build_flags = 
     -D USE_CUSTOM_LOGGER  # Enable custom logger support
+    -D MODBUS_RTU_DEBUG   # Optional: enable debug
 
 lib_deps = 
     Logger  # Must include Logger library when using USE_CUSTOM_LOGGER
@@ -55,31 +72,84 @@ void setup() {
 }
 ```
 
-## Debug Logging
+## Log Levels and Messages
 
-To enable verbose debug logging (packet details), define `MODBUS_RTU_DEBUG`:
-
-```ini
-build_flags = 
-    -D MODBUS_RTU_DEBUG  # Enable debug messages
-```
-
-## Log Messages
-
-The library logs the following:
+### Always Visible (Production)
 - **ERROR**: Timeout errors, CRC errors, invalid parameters, allocation failures
 - **WARN**: Queue full conditions, unexpected states
-- **INFO**: Watchdog configuration, task initialization
-- **DEBUG**: Request/response details, state changes (only with MODBUS_RTU_DEBUG)
-- **VERBOSE**: Detailed packet bytes (only with MODBUS_RTU_DEBUG)
+- **INFO**: Task initialization, watchdog configuration
 
-## C++11 Compatibility
+### Debug Only (Development) 
+These are completely compiled out without `MODBUS_RTU_DEBUG`:
+- **DEBUG**: Request/response details, state changes, timing info
+- **VERBOSE**: Detailed packet bytes, protocol flow
 
-This library is fully C++11 compatible and does not use C++17 features like `__has_include`. The logging system automatically selects the appropriate backend based on the `USE_CUSTOM_LOGGER` flag at compile time.
+## Advanced Debug Features
+
+When `MODBUS_RTU_DEBUG` is enabled, additional features become available:
+
+### Protocol Debugging
+```
+[PROTO] Sending 8 bytes to address 0x01, FC=0x03
+[PROTO] Response complete: 19 bytes received
+[PROTO] Response timeout after 3000 ms
+```
+
+### Buffer Dumps
+```
+TX (8 bytes):
+ 01 03 00 00 00 0A C5 CD
+RX (19 bytes):
+ 01 03 14 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 3E E3
+```
+
+### Performance Timing
+```
+[TIMING] Request/Response cycle took 125 ms
+```
+
+## Production Best Practices
+
+1. **Release Builds**: Don't define `MODBUS_RTU_DEBUG`
+   - Debug code is completely removed at compile time
+   - Zero performance overhead
+   - Smaller binary size
+
+2. **Development**: Define `MODBUS_RTU_DEBUG`
+   - Full protocol visibility
+   - Performance profiling
+   - Issue diagnosis
+
+3. **Selective Debugging**: Enable debug for specific libraries only
+   ```ini
+   build_flags = 
+       -D MODBUS_RTU_DEBUG      # Debug this library
+       ; -D WIFI_MANAGER_DEBUG   # But not this one
+   ```
 
 ## Memory Considerations
 
 - **ESP-IDF logging**: No additional memory overhead
 - **Custom Logger**: ~17KB for Logger singleton (shared across all libraries)
+- **Debug strings**: Only included when `MODBUS_RTU_DEBUG` is defined
 
-Choose ESP-IDF logging if you want minimal memory usage, or custom Logger if you need advanced features like log buffering, filtering, or custom output formats.
+## Example: Complete Debug Configuration
+
+```ini
+[env:debug]
+platform = espressif32
+board = esp32dev
+framework = arduino
+
+build_flags = 
+    -D USE_CUSTOM_LOGGER  # Use custom logger
+    -D MODBUS_RTU_DEBUG   # Enable all debug features
+    
+lib_deps = 
+    Logger
+    esp32ModbusRTU
+```
+
+## C++11 Compatibility
+
+This library is fully C++11 compatible and uses standard preprocessor directives for conditional compilation. No C++17 features are required.

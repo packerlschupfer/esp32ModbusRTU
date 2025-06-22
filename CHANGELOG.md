@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.4.0] - 2024-01-22
+
+### Added
+- Production-ready logging pattern with debug compiled out in release
+- Advanced debug features when MODBUS_RTU_DEBUG is defined:
+  - Protocol-level tracing with MODBUS_LOG_PROTO
+  - Buffer hex dumps with MODBUS_DUMP_BUFFER
+  - Performance timing with MODBUS_TIME_START/END
+- Dedicated esp32ModbusRTULogging.h header for cleaner organization
+- LOG_WRITE support for LogInterface compatibility
+
+### Changed
+- Debug and Verbose logs are now completely compiled out without MODBUS_RTU_DEBUG
+- Reorganized logging configuration into separate header file
+- Improved debug output formatting and organization
+
+### Performance
+- Zero overhead in production builds - debug code completely removed
+- Smaller binary size when debug is disabled
+
 ## [0.3.0] - 2024-01-22
 
 ### Changed
