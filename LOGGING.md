@@ -1,27 +1,43 @@
 # Logging Configuration
 
-The esp32ModbusRTU library supports two logging modes:
+The esp32ModbusRTU library uses LogInterface for zero-overhead logging that supports both ESP-IDF and custom Logger implementations.
 
 ## Default: ESP-IDF Logging
 
-By default, the library uses ESP-IDF's built-in logging system:
+By default (when `USE_CUSTOM_LOGGER` is not defined), the library uses ESP-IDF's built-in logging:
 - Log messages use the tag "ModbusRTU"
 - Control log levels with `esp_log_level_set("ModbusRTU", ESP_LOG_LEVEL)`
 - Available levels: ERROR, WARN, INFO, DEBUG, VERBOSE
+- Zero memory overhead - no Logger singleton created
 
 ## Optional: Custom Logger
 
-To use a custom Logger implementation, define `MODBUS_USE_CUSTOM_LOGGER` in your build flags:
+To route logs through the custom Logger singleton:
 
+### In your platformio.ini:
 ```ini
-# platformio.ini
 build_flags = 
-    -D MODBUS_USE_CUSTOM_LOGGER
+    -D USE_CUSTOM_LOGGER  # Enable for all libraries using LogInterface
 ```
 
-The library expects a `getLogger()` function that returns a Logger instance with the following interface:
+### In your main application:
 ```cpp
-void log(esp_log_level_t level, const char* tag, const char* format, ...);
+// Include these ONCE in your main.cpp
+#include "Logger.h"
+#include "LogInterfaceImpl.h"
+
+// Include the ModbusRTU library
+#include <esp32ModbusRTU.h>
+
+void setup() {
+    // Initialize Logger once for all libraries
+    Logger::getInstance().init(1024);
+    Logger::getInstance().setLogLevel(ESP_LOG_DEBUG);
+    
+    // Now esp32ModbusRTU logs through your Logger
+    esp32ModbusRTU modbus(&Serial1, 16);
+    modbus.begin();
+}
 ```
 
 ## Debug Logging
