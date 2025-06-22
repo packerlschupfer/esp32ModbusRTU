@@ -4,15 +4,21 @@ Simple Modbus RTU Example
 This example demonstrates basic Modbus RTU communication.
 It reads holding registers from a Modbus device.
 
-To enable custom logger (optional):
-- Define MODBUS_USE_CUSTOM_LOGGER in your build flags
-- Provide a getLogger() function that returns your Logger instance
+Logging options:
+1. Default (no configuration needed) - Uses ESP-IDF logging
+2. Custom Logger - Define USE_CUSTOM_LOGGER and include Logger setup
 
 To enable debug logging:
 - Define MODBUS_RTU_DEBUG in your build flags
 */
 
 #include <Arduino.h>
+
+// Optional: To use custom Logger instead of ESP-IDF
+// #define USE_CUSTOM_LOGGER
+// #include "Logger.h"
+// #include "LogInterfaceImpl.h"
+
 #include <esp32ModbusRTU.h>
 
 // Create ModbusRTU instance
@@ -24,6 +30,16 @@ void setup() {
   while (!Serial) { delay(10); }
   
   Serial.println("Modbus RTU Example Starting...");
+  
+  #ifdef USE_CUSTOM_LOGGER
+  // Initialize custom Logger if enabled
+  Logger::getInstance().init(1024);
+  Logger::getInstance().setLogLevel(ESP_LOG_DEBUG);
+  Logger::getInstance().enableLogging(true);
+  Serial.println("Using custom Logger for ModbusRTU");
+  #else
+  Serial.println("Using ESP-IDF logging for ModbusRTU");
+  #endif
   
   // Configure Serial2 for Modbus communication
   // Parameters: baud rate, config, RX pin, TX pin
