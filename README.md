@@ -4,9 +4,10 @@
 
 A non-blocking Modbus RTU client (master) library for ESP32 with modern logging, enhanced error handling, and memory safety features.
 
-## Recent Improvements (v0.1.0)
-- Modern ESP32 logging system with configurable log levels
-- Optional custom Logger support
+## Recent Improvements (v0.2.0)
+- Zero-overhead logging using LogInterface
+- Automatic support for both ESP-IDF and custom Logger
+- No forced Logger instantiation (~17KB saved when not using custom Logger)
 - Improved memory safety and error handling
 - Better configuration options
 - See [CHANGELOG.md](CHANGELOG.md) for details
@@ -26,6 +27,15 @@ A non-blocking Modbus RTU client (master) library for ESP32 with modern logging,
   -  write multiple registers (16/0x10)
   -  read/write multiple registers (23/0x17)
 -  similar API as my [esp32ModbusTCP](https://github.com/bertmelis/esp32ModbusTCP) implementation
+
+## Logging
+
+The library uses LogInterface for flexible, zero-overhead logging:
+
+- **Default**: Uses ESP-IDF logging (no memory overhead)
+- **Custom Logger**: Define `USE_CUSTOM_LOGGER` in your application to use custom Logger
+
+See [LOGGING.md](LOGGING.md) for configuration details.
 
 ## Watchdog Configuration
 
@@ -66,7 +76,7 @@ I have this library in use myself with quite some uptime (only using FC3 -read h
 -  `MODBUS_MAX_COILS` - Maximum coils in single request (default: 2000)
 -  `MODBUS_MAX_REGISTERS` - Maximum registers in single request (default: 125)
 -  `MODBUS_DISABLE_WATCHDOG` - Disable watchdog timer support
--  `MODBUS_USE_CUSTOM_LOGGER` - Use custom logger instead of ESP-IDF logging
+-  `USE_CUSTOM_LOGGER` - Use custom Logger singleton (define in your application, not in library)
 -  `MODBUS_RTU_DEBUG` - Enable debug logging
 
 Things to do:

@@ -7,7 +7,7 @@ Successfully modernized the esp32ModbusRTU library with optional logger support,
 
 ### 1. Logging System Modernization (Commits: 10747b6, 40d4e94)
 - Replaced all `Serial.printf` with modern ESP32 logging macros
-- Added optional custom Logger support via `MODBUS_USE_CUSTOM_LOGGER` flag
+- Added optional custom Logger support (now via application-level `USE_CUSTOM_LOGGER`)
 - Fixed critical bug: Changed `getLogger()` to `Logger::getInstance()`
 - Implemented proper log levels (ERROR, WARN, INFO, DEBUG)
 
@@ -41,7 +41,7 @@ No configuration needed - this is the default.
 
 ### Using Custom Logger
 ```ini
-build_flags = -D MODBUS_USE_CUSTOM_LOGGER
+build_flags = -D USE_CUSTOM_LOGGER
 ```
 
 ### Enable Debug Logging

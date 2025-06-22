@@ -1,6 +1,6 @@
 {
   "name": "esp32ModbusRTU",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "keywords": "Arduino, ESP32, Modbus, RTU",
   "description": "async Modbus-RTU client for ESP32",
   "homepage": "https://github.com/bertmelis/esp32ModbusRTU",

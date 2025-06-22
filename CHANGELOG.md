@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0] - 2024-01-21
+
+### Changed
+- Migrated to LogInterface for zero-overhead logging
+- No longer forces Logger instantiation (~17KB memory saved)
+- USE_CUSTOM_LOGGER is now defined by the application, not the library
+- Simplified logging configuration
+
+### Added
+- Support for LogInterface automatic ESP-IDF/Logger selection
+
+### Removed
+- MODBUS_USE_CUSTOM_LOGGER flag (replaced by application-level USE_CUSTOM_LOGGER)
+- Direct Logger.h dependency
+
 ## [0.1.0] - 2024-01-21
 
 ### Added
