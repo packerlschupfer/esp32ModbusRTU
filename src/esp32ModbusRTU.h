@@ -63,22 +63,15 @@ extern "C"
 #include "esp32ModbusTypeDefs.h"
 #include "ModbusMessage.h"
 
-// Logging configuration
-#ifdef MODBUS_USE_CUSTOM_LOGGER
-  #include "Logger.h"
-  #define MODBUS_LOG_TAG "ModbusRTU"
-  #define MODBUS_LOG_E(...) Logger::getInstance().log(ESP_LOG_ERROR, MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_W(...) Logger::getInstance().log(ESP_LOG_WARN, MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_I(...) Logger::getInstance().log(ESP_LOG_INFO, MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_D(...) Logger::getInstance().log(ESP_LOG_DEBUG, MODBUS_LOG_TAG, __VA_ARGS__)
-#else
-  #include <esp_log.h>
-  #define MODBUS_LOG_TAG "ModbusRTU"
-  #define MODBUS_LOG_E(...) ESP_LOGE(MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_W(...) ESP_LOGW(MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_I(...) ESP_LOGI(MODBUS_LOG_TAG, __VA_ARGS__)
-  #define MODBUS_LOG_D(...) ESP_LOGD(MODBUS_LOG_TAG, __VA_ARGS__)
-#endif
+// Logging configuration using LogInterface
+#include "LogInterface.h"
+
+// Define library-specific logging macros
+#define MODBUS_LOG_TAG "ModbusRTU"
+#define MODBUS_LOG_E(...) LOG_ERROR(MODBUS_LOG_TAG, __VA_ARGS__)
+#define MODBUS_LOG_W(...) LOG_WARN(MODBUS_LOG_TAG, __VA_ARGS__)
+#define MODBUS_LOG_I(...) LOG_INFO(MODBUS_LOG_TAG, __VA_ARGS__)
+#define MODBUS_LOG_D(...) LOG_DEBUG(MODBUS_LOG_TAG, __VA_ARGS__)
 
 class esp32ModbusRTU
 {
