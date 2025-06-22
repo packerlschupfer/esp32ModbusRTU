@@ -29,24 +29,18 @@ Document the patterns found:
 In your main library header file (e.g., `MyLibrary.h`), add:
 
 ```cpp
-// Logging configuration
-#ifdef USE_CUSTOM_LOGGER
-  #include "Logger.h"
-  #define MYLIB_LOG_TAG "MyLibrary"
-  #define MYLIB_LOG_E(...) Logger::getInstance().log(ESP_LOG_ERROR, MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_W(...) Logger::getInstance().log(ESP_LOG_WARN, MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_I(...) Logger::getInstance().log(ESP_LOG_INFO, MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_D(...) Logger::getInstance().log(ESP_LOG_DEBUG, MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_V(...) Logger::getInstance().log(ESP_LOG_VERBOSE, MYLIB_LOG_TAG, __VA_ARGS__)
-#else
-  #include <esp_log.h>
-  #define MYLIB_LOG_TAG "MyLibrary"
-  #define MYLIB_LOG_E(...) ESP_LOGE(MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_W(...) ESP_LOGW(MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_I(...) ESP_LOGI(MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_D(...) ESP_LOGD(MYLIB_LOG_TAG, __VA_ARGS__)
-  #define MYLIB_LOG_V(...) ESP_LOGV(MYLIB_LOG_TAG, __VA_ARGS__)
-#endif
+// Logging configuration using LogInterface (recommended)
+#include "LogInterface.h"
+
+#define MYLIB_LOG_TAG "MyLibrary"
+#define MYLIB_LOG_E(...) LOG_ERROR(MYLIB_LOG_TAG, __VA_ARGS__)
+#define MYLIB_LOG_W(...) LOG_WARN(MYLIB_LOG_TAG, __VA_ARGS__)
+#define MYLIB_LOG_I(...) LOG_INFO(MYLIB_LOG_TAG, __VA_ARGS__)
+#define MYLIB_LOG_D(...) LOG_DEBUG(MYLIB_LOG_TAG, __VA_ARGS__)
+#define MYLIB_LOG_V(...) LOG_VERBOSE(MYLIB_LOG_TAG, __VA_ARGS__)
+
+// Note: LogInterface automatically handles both ESP-IDF and custom Logger
+// based on whether USE_CUSTOM_LOGGER is defined by the application
 ```
 
 Replace:

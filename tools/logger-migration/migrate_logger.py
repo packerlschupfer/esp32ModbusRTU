@@ -32,24 +32,15 @@ def get_macro_prefix(lib_name):
 def create_logging_header(lib_name):
     """Generate the logging configuration header content"""
     prefix = get_macro_prefix(lib_name)
-    return f'''// Logging configuration
-#ifdef {prefix}_USE_CUSTOM_LOGGER
-  #include "Logger.h"
-  #define {prefix}_LOG_TAG "{lib_name}"
-  #define {prefix}_LOG_E(...) Logger::getInstance().log(ESP_LOG_ERROR, {prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_W(...) Logger::getInstance().log(ESP_LOG_WARN, {prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_I(...) Logger::getInstance().log(ESP_LOG_INFO, {prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_D(...) Logger::getInstance().log(ESP_LOG_DEBUG, {prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_V(...) Logger::getInstance().log(ESP_LOG_VERBOSE, {prefix}_LOG_TAG, __VA_ARGS__)
-#else
-  #include <esp_log.h>
-  #define {prefix}_LOG_TAG "{lib_name}"
-  #define {prefix}_LOG_E(...) ESP_LOGE({prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_W(...) ESP_LOGW({prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_I(...) ESP_LOGI({prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_D(...) ESP_LOGD({prefix}_LOG_TAG, __VA_ARGS__)
-  #define {prefix}_LOG_V(...) ESP_LOGV({prefix}_LOG_TAG, __VA_ARGS__)
-#endif
+    return f'''// Logging configuration using LogInterface
+#include "LogInterface.h"
+
+#define {prefix}_LOG_TAG "{lib_name}"
+#define {prefix}_LOG_E(...) LOG_ERROR({prefix}_LOG_TAG, __VA_ARGS__)
+#define {prefix}_LOG_W(...) LOG_WARN({prefix}_LOG_TAG, __VA_ARGS__)
+#define {prefix}_LOG_I(...) LOG_INFO({prefix}_LOG_TAG, __VA_ARGS__)
+#define {prefix}_LOG_D(...) LOG_DEBUG({prefix}_LOG_TAG, __VA_ARGS__)
+#define {prefix}_LOG_V(...) LOG_VERBOSE({prefix}_LOG_TAG, __VA_ARGS__)
 '''
 
 def find_main_header(lib_path, lib_name):
