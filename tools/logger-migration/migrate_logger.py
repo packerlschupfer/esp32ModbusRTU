@@ -33,7 +33,7 @@ def create_logging_header(lib_name):
     """Generate the logging configuration header content"""
     prefix = get_macro_prefix(lib_name)
     return f'''// Logging configuration using LogInterface
-#include "LogInterface.h"
+#include <LogInterface.h>
 
 #define {prefix}_LOG_TAG "{lib_name}"
 #define {prefix}_LOG_E(...) LOG_ERROR({prefix}_LOG_TAG, __VA_ARGS__)

@@ -15,8 +15,8 @@
 
 // When using custom Logger, include these BEFORE the library
 #ifdef USE_CUSTOM_LOGGER
-#include "Logger.h"
-#include "LogInterfaceImpl.h"
+#include <Logger.h>
+#include <LogInterfaceImpl.h>
 #endif
 
 #include <esp32ModbusRTU.h>

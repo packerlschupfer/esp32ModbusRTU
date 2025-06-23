@@ -49,8 +49,8 @@ The library API hasn't changed, but the initialization might be different:
 **Before (v0.2.0):**
 ```cpp
 // LogInterface was always available
-#include "Logger.h"
-#include "LogInterfaceImpl.h"
+#include <Logger.h>
+#include <LogInterfaceImpl.h>
 #include <esp32ModbusRTU.h>
 
 void setup() {
@@ -76,8 +76,8 @@ void setup() {
 ```cpp
 // Define this in platformio.ini instead: build_flags = -D USE_CUSTOM_LOGGER
 #ifdef USE_CUSTOM_LOGGER
-#include "Logger.h"
-#include "LogInterfaceImpl.h"
+#include <Logger.h>
+#include <LogInterfaceImpl.h>
 #endif
 
 #include <esp32ModbusRTU.h>

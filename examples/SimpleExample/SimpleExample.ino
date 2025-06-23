@@ -18,8 +18,8 @@ To enable debug logging:
 
 // When using custom Logger (define USE_CUSTOM_LOGGER in platformio.ini)
 #ifdef USE_CUSTOM_LOGGER
-#include "Logger.h"
-#include "LogInterfaceImpl.h"
+#include <Logger.h>
+#include <LogInterfaceImpl.h>
 #endif
 
 #include <esp32ModbusRTU.h>

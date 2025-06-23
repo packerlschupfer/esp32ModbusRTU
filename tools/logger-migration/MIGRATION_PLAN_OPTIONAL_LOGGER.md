@@ -30,7 +30,7 @@ In your main library header file (e.g., `MyLibrary.h`), add:
 
 ```cpp
 // Logging configuration using LogInterface (recommended)
-#include "LogInterface.h"
+#include <LogInterface.h>
 
 #define MYLIB_LOG_TAG "MyLibrary"
 #define MYLIB_LOG_E(...) LOG_ERROR(MYLIB_LOG_TAG, __VA_ARGS__)

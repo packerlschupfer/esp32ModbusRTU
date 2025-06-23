@@ -16,8 +16,8 @@ Compile this example in two ways:
 
 #ifdef USE_CUSTOM_LOGGER
   // When using custom Logger, include these in your main app
-  #include "Logger.h"
-  #include "LogInterfaceImpl.h"
+  #include <Logger.h>
+  #include <LogInterfaceImpl.h>
 #endif
 
 // Include ModbusRTU - it will automatically use the right logging

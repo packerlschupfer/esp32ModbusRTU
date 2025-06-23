@@ -55,8 +55,8 @@ lib_deps =
 ### In your main application:
 ```cpp
 // When USE_CUSTOM_LOGGER is defined, include Logger implementation
-#include "Logger.h"
-#include "LogInterfaceImpl.h"
+#include <Logger.h>
+#include <LogInterfaceImpl.h>
 
 // Include the ModbusRTU library
 #include <esp32ModbusRTU.h>
