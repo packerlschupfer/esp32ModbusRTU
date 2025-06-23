@@ -22,7 +22,7 @@
 
 // Route to custom logger or ESP-IDF
 #ifdef USE_CUSTOM_LOGGER
-    #include <LogInterface.h>
+    #include "LogInterface.h"
     #define MODBUS_LOG_E(...) LOG_WRITE(MODBUS_LOG_LEVEL_E, MODBUS_LOG_TAG, __VA_ARGS__)
     #define MODBUS_LOG_W(...) LOG_WRITE(MODBUS_LOG_LEVEL_W, MODBUS_LOG_TAG, __VA_ARGS__)
     #define MODBUS_LOG_I(...) LOG_WRITE(MODBUS_LOG_LEVEL_I, MODBUS_LOG_TAG, __VA_ARGS__)
