@@ -6,9 +6,7 @@
   "homepage": "https://github.com/bertmelis/esp32ModbusRTU",
   "license": "MIT",
   "authors": {
-    "name": "Bert Melis",
-    "email": "bert@example.com",
-    "url": "https://github.com/bertmelis",
+    "name": "packerlschupfer",
     "maintainer": true
   },
   "repository": {
