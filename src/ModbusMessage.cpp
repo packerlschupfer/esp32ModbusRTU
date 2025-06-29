@@ -439,9 +439,20 @@ esp32Modbus::FunctionCode ModbusResponse::getFunctionCode() {
 }
 
 uint8_t* ModbusResponse::getData() {
-  return &_buffer[3];
+  // For write single responses (FC 05, 06), data starts at position 2
+  // For read responses, data starts at position 3 (after byte count)
+  esp32Modbus::FunctionCode fc = getFunctionCode();
+  if (fc == esp32Modbus::WRITE_COIL || fc == esp32Modbus::WRITE_HOLD_REGISTER) {
+    return &_buffer[2];  // Points to register address + value
+  }
+  return &_buffer[3];  // For read responses, skip byte count
 }
 
 uint8_t ModbusResponse::getByteCount() {
-  return _buffer[2];
+  // For write single responses (FC 05, 06), return fixed size
+  esp32Modbus::FunctionCode fc = getFunctionCode();
+  if (fc == esp32Modbus::WRITE_COIL || fc == esp32Modbus::WRITE_HOLD_REGISTER) {
+    return 4;  // 2 bytes address + 2 bytes value
+  }
+  return _buffer[2];  // For read responses, byte count is at position 2
 }
