@@ -115,9 +115,9 @@ void esp32ModbusRTU::begin(int coreID /* = -1 */)
 {
   // Log watchdog configuration
   #ifdef MODBUS_DISABLE_WATCHDOG
-    MODBUS_LOG_I("Watchdog handling DISABLED by build flag");
+    MODBUS_LOG_D("Watchdog handling DISABLED by build flag");
   #else
-    MODBUS_LOG_I("Watchdog handling ENABLED (MODBUS_USE_WATCHDOG=%d)", MODBUS_USE_WATCHDOG);
+    MODBUS_LOG_D("Watchdog handling ENABLED (MODBUS_USE_WATCHDOG=%d)", MODBUS_USE_WATCHDOG);
   #endif
   
   // Check if queue was created successfully
@@ -291,9 +291,9 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
   if (!taskStartLogged) {
     taskStartLogged = true;
     #if MODBUS_USE_WATCHDOG
-    MODBUS_LOG_I("Task starting WITH watchdog support");
+    MODBUS_LOG_D("Task starting WITH watchdog support");
     #else
-    MODBUS_LOG_I("Task starting WITHOUT watchdog support (disabled)");
+    MODBUS_LOG_D("Task starting WITHOUT watchdog support (disabled)");
     #endif
   }
   
@@ -321,7 +321,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       if (result == ESP_OK) {
         watchdogActive = true;
         #ifdef MODBUS_RTU_DEBUG
-        MODBUS_LOG_I("Task successfully registered with watchdog");
+        MODBUS_LOG_D("Task successfully registered with watchdog");
         #endif
       } else {
         #ifdef MODBUS_RTU_DEBUG
@@ -332,7 +332,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       // Already subscribed (probably by the main application)
       watchdogActive = true;
       #ifdef MODBUS_RTU_DEBUG
-      MODBUS_LOG_I("Task already registered with watchdog by external code, using existing registration");
+      MODBUS_LOG_D("Task already registered with watchdog by external code, using existing registration");
       #endif
     } else {
       #ifdef MODBUS_RTU_DEBUG

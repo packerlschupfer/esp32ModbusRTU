@@ -133,17 +133,10 @@ uint8_t ModbusMessage::getSize() {
 
 void ModbusMessage::add(uint8_t value) {
   if (_buffer == nullptr) {
-    #ifdef MODBUS_RTU_DEBUG
-    // Can't use MODBUS_LOG_E here as it would create circular dependency
-    // This is a critical error that should be logged
-    #endif
     return;
   }
   
   if (_index >= _length) {
-    #ifdef MODBUS_RTU_DEBUG
-    // Buffer overflow attempt - this indicates a programming error
-    #endif
     return;
   }
   
