@@ -84,6 +84,10 @@ public:
   void onData(esp32Modbus::MBRTUOnData handler);
   void onError(esp32Modbus::MBRTUOnError handler);
   void setTimeOutValue(uint32_t tov);
+  
+  // Watchdog control methods
+  void setWatchdogEnabled(bool enabled);
+  bool isWatchdogEnabled() const;
 
 private:
   bool _addToQueue(esp32ModbusRTUInternals::ModbusRequest *request);
@@ -103,6 +107,7 @@ private:
   esp32Modbus::MBRTUOnError _onError;
 
   bool _shutdown = false;
+  bool _watchdogEnabled = true;
 };
 
 #endif
