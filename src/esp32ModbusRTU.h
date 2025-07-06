@@ -95,10 +95,8 @@ private:
   void _send(uint8_t *data, uint8_t length);
   esp32ModbusRTUInternals::ModbusResponse *_receive(esp32ModbusRTUInternals::ModbusRequest *request);
   
-  #if MODBUS_USE_WATCHDOG
   // Static member to track watchdog registration state across methods
   static bool _globalWatchdogActive;
-  #endif
 
 private:
   uint32_t TimeOutValue;

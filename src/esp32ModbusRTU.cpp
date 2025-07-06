@@ -65,10 +65,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace esp32ModbusRTUInternals; // NOLINT
 
-#if MODBUS_USE_WATCHDOG
 // Define static member for global watchdog state
 bool esp32ModbusRTU::_globalWatchdogActive = false;
-#endif
 
 esp32ModbusRTU::esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin) : TimeOutValue(TIMEOUT_MS),
                                                                         _serial(serial),
