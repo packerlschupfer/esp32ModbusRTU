@@ -94,6 +94,11 @@ private:
   static void _handleConnection(esp32ModbusRTU *instance);
   void _send(uint8_t *data, uint8_t length);
   esp32ModbusRTUInternals::ModbusResponse *_receive(esp32ModbusRTUInternals::ModbusRequest *request);
+  
+  #if MODBUS_USE_WATCHDOG
+  // Static member to track watchdog registration state across methods
+  static bool _globalWatchdogActive;
+  #endif
 
 private:
   uint32_t TimeOutValue;
@@ -108,11 +113,6 @@ private:
 
   bool _shutdown = false;
   bool _watchdogEnabled = true;
-  
-  #if MODBUS_USE_WATCHDOG
-  // Track watchdog registration state
-  static bool _watchdogActive;
-  #endif
 };
 
 #endif

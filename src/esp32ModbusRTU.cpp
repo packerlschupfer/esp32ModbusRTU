@@ -66,8 +66,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace esp32ModbusRTUInternals; // NOLINT
 
 #if MODBUS_USE_WATCHDOG
-// Define static member
-bool esp32ModbusRTU::_watchdogActive = false;
+// Define static member for global watchdog state
+bool esp32ModbusRTU::_globalWatchdogActive = false;
 #endif
 
 esp32ModbusRTU::esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin) : TimeOutValue(TIMEOUT_MS),
@@ -325,7 +325,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       // Use external Watchdog class
       if (Watchdog::isGloballyInitialized()) {
         if (Watchdog::quickRegister(MODBUS_TASK_NAME)) {
-          _watchdogActive = true;
+          _globalWatchdogActive = true;
           MODBUS_LOG_D("Task registered with external Watchdog class");
         } else {
           MODBUS_LOG_E("Failed to register with external Watchdog class");
@@ -348,7 +348,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
         // Not subscribed yet, so subscribe
         esp_err_t result = esp_task_wdt_add(currentTask);
         if (result == ESP_OK) {
-          _watchdogActive = true;
+          _globalWatchdogActive = true;
           #ifdef MODBUS_RTU_DEBUG
           MODBUS_LOG_D("Task successfully registered with watchdog");
           #endif
@@ -359,7 +359,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
         }
       } else if (status == ESP_OK) {
         // Already subscribed (probably by the main application)
-        _watchdogActive = true;
+        _globalWatchdogActive = true;
         #ifdef MODBUS_RTU_DEBUG
         MODBUS_LOG_D("Task already registered with watchdog by external code, using existing registration");
         #endif
@@ -413,7 +413,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
       
       #if MODBUS_USE_WATCHDOG
       // Feed watchdog after processing request (only if registered and not shutting down)
-      if (_watchdogActive && !instance->_shutdown && instance->_watchdogEnabled) {
+      if (_globalWatchdogActive && !instance->_shutdown && instance->_watchdogEnabled) {
         #if WATCHDOG_CLASS_AVAILABLE
           Watchdog::quickFeed();
         #else
@@ -426,7 +426,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
     {
       #if MODBUS_USE_WATCHDOG
       // No message received within timeout, just feed the watchdog (only if registered and not shutting down)
-      if (_watchdogActive && !instance->_shutdown && instance->_watchdogEnabled) {
+      if (_globalWatchdogActive && !instance->_shutdown && instance->_watchdogEnabled) {
         #if WATCHDOG_CLASS_AVAILABLE
           Watchdog::quickFeed();
         #else
@@ -439,7 +439,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
   
   // Task is exiting due to shutdown
   #if MODBUS_USE_WATCHDOG
-  if (_watchdogActive && instance->_watchdogEnabled) {
+  if (_globalWatchdogActive && instance->_watchdogEnabled) {
     // Try to unsubscribe cleanly before task exits
     #if WATCHDOG_CLASS_AVAILABLE
       Watchdog& watchdog = Watchdog::getInstance();
@@ -521,7 +521,7 @@ void esp32ModbusRTU::setWatchdogEnabled(bool enabled)
             // Not registered, so register
             esp_err_t result = esp_task_wdt_add(taskHandle);
             if (result == ESP_OK) {
-              _watchdogActive = true;
+              _globalWatchdogActive = true;
               MODBUS_LOG_D("Watchdog enabled (registered with ESP-IDF)");
             } else {
               MODBUS_LOG_E("Failed to enable watchdog: error=%d", result);
@@ -533,10 +533,10 @@ void esp32ModbusRTU::setWatchdogEnabled(bool enabled)
           // Unregister from ESP-IDF watchdog
           esp_err_t result = esp_task_wdt_delete(taskHandle);
           if (result == ESP_OK) {
-            _watchdogActive = false;
+            _globalWatchdogActive = false;
             MODBUS_LOG_D("Watchdog disabled (unregistered from ESP-IDF)");
           } else if (result == ESP_ERR_NOT_FOUND) {
-            _watchdogActive = false;
+            _globalWatchdogActive = false;
             MODBUS_LOG_D("Watchdog disabled (was not registered)");
           } else {
             MODBUS_LOG_E("Failed to disable watchdog: error=%d", result);
@@ -592,7 +592,7 @@ ModbusResponse *esp32ModbusRTU::_receive(ModbusRequest *request)
       #if WATCHDOG_CLASS_AVAILABLE
         Watchdog::quickFeed();
       #elif MODBUS_USE_WATCHDOG
-        if (_watchdogActive) {
+        if (_globalWatchdogActive) {
           esp_task_wdt_reset();
         }
       #endif
