@@ -14,13 +14,7 @@
     "url": "https://github.com/bertmelis/esp32ModbusRTU.git",
     "branch": "master"
   },
-  "dependencies": {
-    "workspace_Class-Watchdog": {
-      "version": "*",
-      "platforms": "espressif32",
-      "required": false
-    }
-  },
+  "dependencies": [],
   "frameworks": "arduino",
   "platforms": [
     "espressif32"
