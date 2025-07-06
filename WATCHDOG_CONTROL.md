@@ -18,13 +18,16 @@ This caused system crashes that prevented proper device initialization in indust
 
 ## Solution
 
-### Core Fix
-The library now feeds the watchdog periodically during the `_receive()` method, preventing timeouts during long waits for device responses.
+### Core Fixes
+1. The library now feeds the watchdog periodically (every 500ms) during the `_receive()` method, preventing timeouts during long waits for device responses.
+2. The `setWatchdogEnabled()` method now actually registers/unregisters the task with ESP-IDF watchdog, not just sets a flag.
 
 ### New API Methods
 
 ```cpp
 // Enable or disable watchdog for this ModbusRTU instance
+// When disabled: unregisters task from ESP-IDF watchdog
+// When enabled: registers task with ESP-IDF watchdog
 void setWatchdogEnabled(bool enabled);
 
 // Check if watchdog is enabled

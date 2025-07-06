@@ -108,6 +108,11 @@ private:
 
   bool _shutdown = false;
   bool _watchdogEnabled = true;
+  
+  #if MODBUS_USE_WATCHDOG
+  // Track watchdog registration state
+  static bool _watchdogActive;
+  #endif
 };
 
 #endif
