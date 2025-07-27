@@ -22,12 +22,12 @@
 
 // Route to custom logger or ESP-IDF
 #ifdef USE_CUSTOM_LOGGER
-    #include "../logger_submodule/src/LogInterface.h"
-    #define MODBUS_LOG_E(...) LOG_WRITE(MODBUS_LOG_LEVEL_E, MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_W(...) LOG_WRITE(MODBUS_LOG_LEVEL_W, MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_I(...) LOG_WRITE(MODBUS_LOG_LEVEL_I, MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_D(...) LOG_WRITE(MODBUS_LOG_LEVEL_D, MODBUS_LOG_TAG, __VA_ARGS__)
-    #define MODBUS_LOG_V(...) LOG_WRITE(MODBUS_LOG_LEVEL_V, MODBUS_LOG_TAG, __VA_ARGS__)
+    #include <Logger.h>
+    #define MODBUS_LOG_E(...) Logger::getInstance().log(MODBUS_LOG_LEVEL_E, MODBUS_LOG_TAG, __VA_ARGS__)
+    #define MODBUS_LOG_W(...) Logger::getInstance().log(MODBUS_LOG_LEVEL_W, MODBUS_LOG_TAG, __VA_ARGS__)
+    #define MODBUS_LOG_I(...) Logger::getInstance().log(MODBUS_LOG_LEVEL_I, MODBUS_LOG_TAG, __VA_ARGS__)
+    #define MODBUS_LOG_D(...) Logger::getInstance().log(MODBUS_LOG_LEVEL_D, MODBUS_LOG_TAG, __VA_ARGS__)
+    #define MODBUS_LOG_V(...) Logger::getInstance().log(MODBUS_LOG_LEVEL_V, MODBUS_LOG_TAG, __VA_ARGS__)
 #else
     // ESP-IDF logging with compile-time suppression
     #include <esp_log.h>
