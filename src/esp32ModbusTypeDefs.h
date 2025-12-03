@@ -96,6 +96,35 @@ inline const char* getErrorDescription(Error error) {
   }
 }
 
+/**
+ * @brief Priority levels for Modbus requests
+ *
+ * Lower numeric values = higher priority (processed first)
+ *
+ * Queue configuration:
+ * - EMERGENCY: 4 slots  (emergency shutdown, failsafe)
+ * - SENSOR:    8 slots  (temperature/pressure sensor reads)
+ * - RELAY:     12 slots (relay commands, mode switches)
+ * - STATUS:    4 slots  (verification, diagnostics)
+ */
+enum ModbusPriority : uint8_t {
+  EMERGENCY = 0,  ///< Highest priority - emergency shutdown, failsafe
+  SENSOR = 1,     ///< High priority - sensor reads (safety-critical)
+  RELAY = 2,      ///< Normal priority - relay commands
+  STATUS = 3      ///< Low priority - status/diagnostic reads
+};
+
+// Helper function to get priority description
+inline const char* getPriorityDescription(ModbusPriority priority) {
+  switch (priority) {
+    case EMERGENCY: return "EMERGENCY";
+    case SENSOR:    return "SENSOR";
+    case RELAY:     return "RELAY";
+    case STATUS:    return "STATUS";
+    default:        return "UNKNOWN";
+  }
+}
+
 }  // namespace esp32Modbus
 
 #endif

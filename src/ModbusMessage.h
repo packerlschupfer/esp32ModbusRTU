@@ -62,6 +62,8 @@ class ModbusRequest : public ModbusMessage {
   uint16_t getAddress();
   uint8_t getSlaveAddress() const { return _slaveAddress; }
   uint8_t getFunctionCode() const { return _functionCode; }
+  esp32Modbus::ModbusPriority getPriority() const { return _priority; }
+  void setPriority(esp32Modbus::ModbusPriority priority) { _priority = priority; }
 
  protected:
   explicit ModbusRequest(uint8_t length);
@@ -69,6 +71,7 @@ class ModbusRequest : public ModbusMessage {
   uint8_t _functionCode;
   uint16_t _address;
   uint16_t _byteCount;
+  esp32Modbus::ModbusPriority _priority;  // Default priority will be set in constructor
 };
 
 // read coils

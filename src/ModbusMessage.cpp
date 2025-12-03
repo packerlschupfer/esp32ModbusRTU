@@ -148,7 +148,8 @@ ModbusRequest::ModbusRequest(uint8_t length) :
   _slaveAddress(0),
   _functionCode(0),
   _address(0),
-  _byteCount(0) {}
+  _byteCount(0),
+  _priority(esp32Modbus::RELAY) {}  // Default to RELAY priority for backward compatibility
 
   uint16_t ModbusRequest::getAddress() {
   return _address;
