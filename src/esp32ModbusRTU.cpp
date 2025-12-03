@@ -74,14 +74,21 @@ esp32ModbusRTU::esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin) : TimeOutV
                                                                         _interval(0),
                                                                         _rtsPin(rtsPin),
                                                                         _task(nullptr),
-                                                                        _queue(nullptr),
                                                                         _shutdown(false)
 {
-  _queue = xQueueCreate(QUEUE_SIZE, sizeof(ModbusRequest *));
-  if (_queue == nullptr) {
-    #ifdef MODBUS_RTU_DEBUG
-    MODBUS_LOG_E("Failed to create queue!");
-    #endif
+  // Create 4 priority queues
+  _queues[esp32Modbus::EMERGENCY] = xQueueCreate(EMERGENCY_QUEUE_SIZE, sizeof(ModbusRequest *));
+  _queues[esp32Modbus::SENSOR] = xQueueCreate(SENSOR_QUEUE_SIZE, sizeof(ModbusRequest *));
+  _queues[esp32Modbus::RELAY] = xQueueCreate(RELAY_QUEUE_SIZE, sizeof(ModbusRequest *));
+  _queues[esp32Modbus::STATUS] = xQueueCreate(STATUS_QUEUE_SIZE, sizeof(ModbusRequest *));
+
+  // Check if all queues were created successfully
+  for (int i = 0; i < 4; i++) {
+    if (_queues[i] == nullptr) {
+      #ifdef MODBUS_RTU_DEBUG
+      MODBUS_LOG_E("Failed to create priority queue %d!", i);
+      #endif
+    }
   }
 }
 
@@ -89,18 +96,28 @@ esp32ModbusRTU::~esp32ModbusRTU()
 {
   _shutdown = true;
 
-  // Only proceed if queue was successfully created
-  if (_queue != nullptr) {
-    // Clear the queue
-    xQueueReset(_queue);
+  // Clear all priority queues
+  for (int i = 0; i < 4; i++) {
+    if (_queues[i] != nullptr) {
+      xQueueReset(_queues[i]);
+    }
+  }
 
-    // We may be processing a modbus request, then the queue will be empty so we add another to know
-    // that we are not processing a real modbus request
-    readDiscreteInputs(0, 0, 0);
+  // We may be processing a modbus request, then queues will be empty so we add another to know
+  // that we are not processing a real modbus request
+  readDiscreteInputs(0, 0, 0);
 
-    // Wait until we have processed an outstanding modbus com request if present
-    while (uxQueueMessagesWaiting(_queue) > 0)
-    {
+  // Wait until we have processed outstanding modbus requests in all queues
+  bool queuesEmpty = false;
+  while (!queuesEmpty) {
+    queuesEmpty = true;
+    for (int i = 0; i < 4; i++) {
+      if (_queues[i] != nullptr && uxQueueMessagesWaiting(_queues[i]) > 0) {
+        queuesEmpty = false;
+        break;
+      }
+    }
+    if (!queuesEmpty) {
       delay(1);
     }
   }
@@ -115,10 +132,12 @@ esp32ModbusRTU::~esp32ModbusRTU()
     _task = nullptr;
   }
 
-  // Delete queue if it exists
-  if (_queue != nullptr) {
-    vQueueDelete(_queue);
-    _queue = nullptr;
+  // Delete all priority queues
+  for (int i = 0; i < 4; i++) {
+    if (_queues[i] != nullptr) {
+      vQueueDelete(_queues[i]);
+      _queues[i] = nullptr;
+    }
   }
 }
 
@@ -245,6 +264,82 @@ bool esp32ModbusRTU::readWriteMultipleRegisters(uint8_t slaveAddress, uint16_t r
   return _addToQueue(request);
 }
 
+// ===== Priority API implementations =====
+
+bool esp32ModbusRTU::readCoilsWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, esp32Modbus::ModbusPriority priority)
+{
+  ModbusRequest *request = new ModbusRequest01(slaveAddress, address, numberCoils);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::readDiscreteInputsWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, esp32Modbus::ModbusPriority priority)
+{
+  ModbusRequest *request = new ModbusRequest02(slaveAddress, address, numberCoils);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::readHoldingRegistersWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, esp32Modbus::ModbusPriority priority)
+{
+  ModbusRequest *request = new ModbusRequest03(slaveAddress, address, numberRegisters);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::readInputRegistersWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, esp32Modbus::ModbusPriority priority)
+{
+  ModbusRequest *request = new ModbusRequest04(slaveAddress, address, numberRegisters);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::writeSingleCoilWithPriority(uint8_t slaveAddress, uint16_t address, bool value, esp32Modbus::ModbusPriority priority)
+{
+  ModbusRequest *request = new ModbusRequest05(slaveAddress, address, value);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::writeSingleHoldingRegisterWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t data, esp32Modbus::ModbusPriority priority)
+{
+  ModbusRequest *request = new ModbusRequest06(slaveAddress, address, data);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::writeMultipleCoilsWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool *values, esp32Modbus::ModbusPriority priority)
+{
+  ModbusRequest *request = new ModbusRequest0F(slaveAddress, address, numberCoils, values);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::writeMultHoldingRegistersWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, uint8_t *data, esp32Modbus::ModbusPriority priority)
+{
+  ModbusRequest *request = new ModbusRequest16(slaveAddress, address, numberRegisters, data);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
+bool esp32ModbusRTU::readWriteMultipleRegistersWithPriority(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t *writeData, esp32Modbus::ModbusPriority priority)
+{
+  // Validate parameters
+  if (readCount == 0 || readCount > MODBUS_MAX_REGISTERS ||
+      writeCount == 0 || writeCount > MODBUS_MAX_REGISTERS ||
+      writeData == nullptr) {
+    #ifdef MODBUS_RTU_DEBUG
+    MODBUS_LOG_E("readWriteMultipleRegistersWithPriority: Invalid parameters (read=%d, write=%d, max=%d)",
+                  readCount, writeCount, MODBUS_MAX_REGISTERS);
+    #endif
+    return false;
+  }
+
+  ModbusRequest *request = new ModbusRequest17(slaveAddress, readAddress, readCount, writeAddress, writeCount, writeData);
+  request->setPriority(priority);
+  return _addToQueue(request);
+}
+
 void esp32ModbusRTU::onData(esp32Modbus::MBRTUOnData handler)
 {
   _onData = handler;
@@ -264,15 +359,33 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
     #endif
     return false;
   }
-  else if (_queue == nullptr)
+
+  // Get priority from request
+  esp32Modbus::ModbusPriority priority = request->getPriority();
+  uint8_t queueIndex = static_cast<uint8_t>(priority);
+
+  // Validate priority
+  if (queueIndex >= 4)
   {
     #ifdef MODBUS_RTU_DEBUG
-    MODBUS_LOG_E("_addToQueue: queue is null");
+    MODBUS_LOG_E("_addToQueue: invalid priority %d", queueIndex);
     #endif
     delete request;
     return false;
   }
-  else if (_task == nullptr)
+
+  // Check if priority queue exists
+  if (_queues[queueIndex] == nullptr)
+  {
+    #ifdef MODBUS_RTU_DEBUG
+    MODBUS_LOG_E("_addToQueue: queue[%d] is null", queueIndex);
+    #endif
+    delete request;
+    return false;
+  }
+
+  // Check if task exists
+  if (_task == nullptr)
   {
     #ifdef MODBUS_RTU_DEBUG
     MODBUS_LOG_E("_addToQueue: task is null");
@@ -280,19 +393,40 @@ bool esp32ModbusRTU::_addToQueue(ModbusRequest *request)
     delete request;
     return false;
   }
-  else if (xQueueSend(_queue, reinterpret_cast<void *>(&request), (TickType_t)0) != pdPASS)
+
+  // Enqueue into appropriate priority queue
+  if (xQueueSend(_queues[queueIndex], reinterpret_cast<void *>(&request), (TickType_t)0) != pdPASS)
   {
     #ifdef MODBUS_RTU_DEBUG
-    MODBUS_LOG_E("_addToQueue: queue send failed");
+    MODBUS_LOG_E("_addToQueue: queue[%d] send failed (priority: %s)",
+                 queueIndex, esp32Modbus::getPriorityDescription(priority));
     #endif
     delete request;
     return false;
   }
-  else
-  {
-    // Success - no need to log every successful queue operation
-    return true;
+
+  // Success - no need to log every successful queue operation
+  return true;
+}
+
+ModbusRequest* esp32ModbusRTU::_dequeueByPriority()
+{
+  ModbusRequest* request = nullptr;
+
+  // Check queues in priority order (EMERGENCY=0 first, STATUS=3 last)
+  for (int priority = 0; priority < 4; priority++) {
+    if (_queues[priority] != nullptr) {
+      if (xQueueReceive(_queues[priority], &request, 0) == pdTRUE) {
+        #ifdef MODBUS_RTU_DEBUG
+        MODBUS_LOG_D("Dequeued request from priority %s queue",
+                     esp32Modbus::getPriorityDescription(static_cast<esp32Modbus::ModbusPriority>(priority)));
+        #endif
+        return request;  // Found request in this priority
+      }
+    }
   }
+
+  return nullptr;  // No requests in any queue
 }
 
 void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
@@ -373,9 +507,13 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
   
   while (!instance->_shutdown)
   {
-    ModbusRequest *request;
-    // Use a timeout instead of portMAX_DELAY to allow periodic watchdog feeding
-    if (instance->_queue && pdTRUE == xQueueReceive(instance->_queue, &request, pdMS_TO_TICKS(1000)))
+    ModbusRequest *request = nullptr;
+
+    // Try to dequeue from priority queues (non-blocking check)
+    request = instance->_dequeueByPriority();
+
+    // If we got a request, process it
+    if (request != nullptr)
     {
       if (instance->_shutdown)
       {
@@ -422,8 +560,11 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
     }
     else
     {
+      // No requests available in any priority queue - wait before checking again
+      vTaskDelay(pdMS_TO_TICKS(100));  // 100ms delay to avoid busy-waiting
+
       #if MODBUS_USE_WATCHDOG
-      // No message received within timeout, just feed the watchdog (only if registered and not shutting down)
+      // No message received, feed the watchdog (only if registered and not shutting down)
       if (_globalWatchdogActive && !instance->_shutdown && instance->_watchdogEnabled) {
         #if WATCHDOG_CLASS_AVAILABLE
           Watchdog::quickFeed();

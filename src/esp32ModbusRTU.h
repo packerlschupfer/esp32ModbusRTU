@@ -29,7 +29,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Default configuration
 #ifndef QUEUE_SIZE
-#define QUEUE_SIZE 16  // Number of requests that can be queued
+#define QUEUE_SIZE 16  // Legacy: kept for backward compatibility
+#endif
+
+// Priority queue sizes (total: 28 slots)
+#ifndef EMERGENCY_QUEUE_SIZE
+#define EMERGENCY_QUEUE_SIZE 4  // Emergency shutdown, failsafe
+#endif
+
+#ifndef SENSOR_QUEUE_SIZE
+#define SENSOR_QUEUE_SIZE 8  // Temperature/pressure sensor reads
+#endif
+
+#ifndef RELAY_QUEUE_SIZE
+#define RELAY_QUEUE_SIZE 12  // Relay commands, mode switches (2 mode switches = 10 cmds)
+#endif
+
+#ifndef STATUS_QUEUE_SIZE
+#define STATUS_QUEUE_SIZE 4  // Status/diagnostic reads
 #endif
 
 #ifndef TIMEOUT_MS
@@ -72,6 +89,9 @@ public:
   explicit esp32ModbusRTU(HardwareSerial *serial, int8_t rtsPin = -1);
   ~esp32ModbusRTU();
   void begin(int coreID = -1);
+
+  // ===== Legacy API (backward compatible) =====
+  // These methods use default RELAY priority
   bool readCoils(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils);
   bool readDiscreteInputs(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils);
   bool readHoldingRegisters(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters);
@@ -81,6 +101,19 @@ public:
   bool writeMultipleCoils(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool *values);
   bool writeMultHoldingRegisters(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, uint8_t *data);
   bool readWriteMultipleRegisters(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t *writeData);
+
+  // ===== Priority API (new) =====
+  // These methods allow specifying request priority
+  bool readCoilsWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, esp32Modbus::ModbusPriority priority);
+  bool readDiscreteInputsWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, esp32Modbus::ModbusPriority priority);
+  bool readHoldingRegistersWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, esp32Modbus::ModbusPriority priority);
+  bool readInputRegistersWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, esp32Modbus::ModbusPriority priority);
+  bool writeSingleCoilWithPriority(uint8_t slaveAddress, uint16_t address, bool value, esp32Modbus::ModbusPriority priority);
+  bool writeSingleHoldingRegisterWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t data, esp32Modbus::ModbusPriority priority);
+  bool writeMultipleCoilsWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool *values, esp32Modbus::ModbusPriority priority);
+  bool writeMultHoldingRegistersWithPriority(uint8_t slaveAddress, uint16_t address, uint16_t numberRegisters, uint8_t *data, esp32Modbus::ModbusPriority priority);
+  bool readWriteMultipleRegistersWithPriority(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t *writeData, esp32Modbus::ModbusPriority priority);
+
   void onData(esp32Modbus::MBRTUOnData handler);
   void onError(esp32Modbus::MBRTUOnError handler);
   void setTimeOutValue(uint32_t tov);
@@ -91,10 +124,11 @@ public:
 
 private:
   bool _addToQueue(esp32ModbusRTUInternals::ModbusRequest *request);
+  esp32ModbusRTUInternals::ModbusRequest* _dequeueByPriority();  // Dequeue from highest priority queue
   static void _handleConnection(esp32ModbusRTU *instance);
   void _send(uint8_t *data, uint8_t length);
   esp32ModbusRTUInternals::ModbusResponse *_receive(esp32ModbusRTUInternals::ModbusRequest *request);
-  
+
   // Static member to track watchdog registration state across methods
   static bool _globalWatchdogActive;
 
@@ -105,7 +139,7 @@ private:
   uint32_t _interval;
   int8_t _rtsPin;
   TaskHandle_t _task;
-  QueueHandle_t _queue;
+  QueueHandle_t _queues[4];  // Priority queues: [EMERGENCY, SENSOR, RELAY, STATUS]
   esp32Modbus::MBRTUOnData _onData;
   esp32Modbus::MBRTUOnError _onError;
 
