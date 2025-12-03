@@ -150,11 +150,17 @@ void esp32ModbusRTU::begin(int coreID /* = -1 */)
     MODBUS_LOG_D("Watchdog handling ENABLED (MODBUS_USE_WATCHDOG=%d)", MODBUS_USE_WATCHDOG);
   #endif
   
-  // Check if queue was created successfully
-  if (_queue == nullptr) {
-    #ifdef MODBUS_RTU_DEBUG
-    MODBUS_LOG_E("Cannot begin - queue is null!");
-    #endif
+  // Check if all queues were created successfully
+  bool allQueuesCreated = true;
+  for (int i = 0; i < 4; i++) {
+    if (_queues[i] == nullptr) {
+      allQueuesCreated = false;
+      #ifdef MODBUS_RTU_DEBUG
+      MODBUS_LOG_E("Cannot begin - queue[%d] is null!", i);
+      #endif
+    }
+  }
+  if (!allQueuesCreated) {
     return;
   }
   
