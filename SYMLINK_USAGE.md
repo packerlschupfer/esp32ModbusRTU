@@ -12,7 +12,7 @@ board = esp32dev
 framework = arduino
 
 lib_deps = 
-    esp32ModbusRTU=symlink:///home/mrnice/Documents/PlatformIO/libs/esp32ModbusRTU
+    esp32ModbusRTU=symlink://~/.platformio/lib/esp32ModbusRTU
     ; Other dependencies...
 ```
 
@@ -26,7 +26,7 @@ Make sure you don't have multiple esp32ModbusRTU entries:
 ; WRONG - Don't do this
 lib_deps = 
     esp32ModbusRTU @ ^0.1.0  ; Remove this!
-    esp32ModbusRTU=symlink:///home/mrnice/Documents/PlatformIO/libs/esp32ModbusRTU
+    esp32ModbusRTU=symlink://~/.platformio/lib/esp32ModbusRTU
 ```
 
 ### 2. Check Other Libraries
@@ -62,7 +62,7 @@ YourProject/
 ├── src/
 │   └── main.cpp
 ├── lib/
-│   └── esp32ModbusRTU -> /home/mrnice/Documents/PlatformIO/libs/esp32ModbusRTU
+│   └── esp32ModbusRTU -> ~/.platformio/lib/esp32ModbusRTU
 └── platformio.ini
 ```
 
@@ -70,7 +70,7 @@ Or use lib_extra_dirs:
 ```ini
 [env:myproject]
 lib_extra_dirs = 
-    /home/mrnice/Documents/PlatformIO/libs
+    ~/.platformio/lib
 lib_deps = 
     esp32ModbusRTU  ; Will find it in lib_extra_dirs
 ```
@@ -83,7 +83,7 @@ Create a libs.ini file:
 [env]
 lib_deps = 
     ${common.lib_deps}
-    esp32ModbusRTU=symlink:///home/mrnice/Documents/PlatformIO/libs/esp32ModbusRTU
+    esp32ModbusRTU=symlink://~/.platformio/lib/esp32ModbusRTU
 ```
 
 Then in platformio.ini:

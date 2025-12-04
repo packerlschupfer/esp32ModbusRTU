@@ -41,7 +41,7 @@ git clone https://github.com/bertmelis/esp32ModbusRTU.git lib/esp32ModbusRTU
 If you're developing with this library:
 ```bash
 cd your_project/lib
-ln -s /home/mrnice/Documents/PlatformIO/libs/esp32ModbusRTU esp32ModbusRTU
+ln -s ~/.platformio/lib/esp32ModbusRTU esp32ModbusRTU
 ```
 
 ## Complete platformio.ini Example

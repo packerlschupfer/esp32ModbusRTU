@@ -53,4 +53,4 @@ This convention ensures maximum compatibility and reliability across different b
 
 ✅ **All libraries have been updated** to follow this convention as of 2025-06-23.
 
-For detailed status and verification information, see [`/home/mrnice/Documents/PlatformIO/libs/INCLUDE_CONVENTION_STATUS.md`](../../INCLUDE_CONVENTION_STATUS.md)
+For detailed status and verification information, see [`~/.platformio/lib/INCLUDE_CONVENTION_STATUS.md`](../../INCLUDE_CONVENTION_STATUS.md)
