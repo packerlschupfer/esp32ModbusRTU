@@ -615,12 +615,20 @@ void esp32ModbusRTU::_send(uint8_t *data, uint8_t length)
   MODBUS_LOG_PROTO("Sending %d bytes to address 0x%02X, FC=0x%02X", length, data[0], data[1]);
   MODBUS_DUMP_BUFFER("TX", data, length);
   
-  // Toggle rtsPin, if necessary
+  // Toggle rtsPin to TX mode
   if (_rtsPin >= 0)
     digitalWrite(_rtsPin, HIGH);
   _serial->write(data, length);
   _serial->flush();
-  // Toggle rtsPin, if necessary
+
+  // CRITICAL: Wait for last byte to physically transmit before switching to RX
+  // flush() only waits for TX buffer to empty to UART, not for physical transmission.
+  // At 9600 baud: 1 char = 10 bits / 9600 = 1.04ms. Add margin for safety.
+  // Calculate based on actual baud rate: (10 bits * 1000000us) / baud + 500us margin
+  uint32_t charTimeUs = (10 * 1000000UL) / _serial->baudRate();
+  delayMicroseconds(charTimeUs + 500);  // Last char time + 500us margin
+
+  // Toggle rtsPin to RX mode
   if (_rtsPin >= 0)
     digitalWrite(_rtsPin, LOW);
   _lastMillis = millis();
