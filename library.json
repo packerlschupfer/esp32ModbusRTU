@@ -1,0 +1,32 @@
+{
+  "name": "esp32ModbusRTU",
+  "version": "0.4.0",
+  "keywords": "Arduino, ESP32, Modbus, RTU, RS485, logging, C++11",
+  "description": "Async Modbus-RTU client for ESP32 with advanced debug logging, performance timing, and flexible zero-overhead logging (ESP-IDF or custom Logger)",
+  "homepage": "https://github.com/bertmelis/esp32ModbusRTU",
+  "license": "MIT",
+  "authors": {
+    "name": "packerlschupfer",
+    "maintainer": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bertmelis/esp32ModbusRTU.git",
+    "branch": "master"
+  },
+  "dependencies": [],
+  "frameworks": "arduino",
+  "platforms": [
+    "espressif32"
+  ],
+  "export": {
+    "include": [
+      "src/*",
+      "examples/*",
+      "LICENSE",
+      "README.md",
+      "CHANGELOG.md",
+      "LOGGING.md"
+    ]
+  }
+}
