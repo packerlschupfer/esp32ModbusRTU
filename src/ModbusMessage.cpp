@@ -33,7 +33,7 @@ MODBUS over serial line specification and implementation guide V1.02
 
 using namespace esp32ModbusRTUInternals;  // NOLINT
 
-static uint8_t crcHiTable[] = {
+static const uint8_t crcHiTable[] = {
   0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81,
   0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0,
   0x80, 0x41, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40, 0x00, 0xC1, 0x81, 0x40, 0x01,
@@ -54,7 +54,7 @@ static uint8_t crcHiTable[] = {
   0x40
 };
 
-static uint8_t crcLoTable[] = {
+static const uint8_t crcLoTable[] = {
   0x00, 0xC0, 0xC1, 0x01, 0xC3, 0x03, 0x02, 0xC2, 0xC6, 0x06, 0x07, 0xC7, 0x05, 0xC5, 0xC4,
   0x04, 0xCC, 0x0C, 0x0D, 0xCD, 0x0F, 0xCF, 0xCE, 0x0E, 0x0A, 0xCA, 0xCB, 0x0B, 0xC9, 0x09,
   0x08, 0xC8, 0xD8, 0x18, 0x19, 0xD9, 0x1B, 0xDB, 0xDA, 0x1A, 0x1E, 0xDE, 0xDF, 0x1F, 0xDD,
@@ -104,10 +104,18 @@ ModbusMessage::ModbusMessage(uint8_t length) :
   _buffer(nullptr),
   _length(length),
   _index(0) {
-  if (length < 5) _length = 5;  // minimum for Modbus Exception codes
+  if (length < MODBUS_MIN_RESPONSE_LENGTH) _length = MODBUS_MIN_RESPONSE_LENGTH;  // minimum for Modbus Exception codes
+  
+  // Safety check to prevent excessive allocation
+  if (_length > 255) {  // Max uint8_t value, reasonable for Modbus RTU
+    _length = 255;
+  }
+  
   _buffer = new uint8_t[_length];
-  for (uint8_t i = 0; i < _length; ++i) {
-    _buffer[i] = 0;
+  if (_buffer != nullptr) {
+    for (uint8_t i = 0; i < _length; ++i) {
+      _buffer[i] = 0;
+    }
   }
 }
 
@@ -124,7 +132,15 @@ uint8_t ModbusMessage::getSize() {
 }
 
 void ModbusMessage::add(uint8_t value) {
-  if (_index < _length) _buffer[_index++] = value;
+  if (_buffer == nullptr) {
+    return;
+  }
+  
+  if (_index >= _length) {
+    return;
+  }
+  
+  _buffer[_index++] = value;
 }
 
 ModbusRequest::ModbusRequest(uint8_t length) :
@@ -132,10 +148,32 @@ ModbusRequest::ModbusRequest(uint8_t length) :
   _slaveAddress(0),
   _functionCode(0),
   _address(0),
-  _byteCount(0) {}
+  _byteCount(0),
+  _priority(esp32Modbus::RELAY) {}  // Default to RELAY priority for backward compatibility
 
   uint16_t ModbusRequest::getAddress() {
   return _address;
+}
+
+ModbusRequest01::ModbusRequest01(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils) :
+  ModbusRequest(8) {
+  _slaveAddress = slaveAddress;
+  _functionCode = esp32Modbus::READ_COIL;
+  _address = address;
+  _byteCount = (numberCoils + 7) / 8;
+  add(_slaveAddress);
+  add(_functionCode);
+  add(high(_address));
+  add(low(_address));
+  add(high(numberCoils));
+  add(low(numberCoils));
+  uint16_t CRC = CRC16(_buffer, 6);
+  add(low(CRC));
+  add(high(CRC));
+}
+
+size_t ModbusRequest01::responseLength() {
+  return 5 + _byteCount;
 }
 
 ModbusRequest02::ModbusRequest02(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils) :
@@ -143,7 +181,7 @@ ModbusRequest02::ModbusRequest02(uint8_t slaveAddress, uint16_t address, uint16_
   _slaveAddress = slaveAddress;
   _functionCode = esp32Modbus::READ_DISCR_INPUT;
   _address = address;
-  _byteCount = numberCoils / 8 + 1;
+  _byteCount = (numberCoils + 7) / 8;
   add(_slaveAddress);
   add(_functionCode);
   add(high(_address));
@@ -202,6 +240,28 @@ size_t ModbusRequest04::responseLength() {
   return 5 + _byteCount;
 }
 
+ModbusRequest05::ModbusRequest05(uint8_t slaveAddress, uint16_t address, bool value) :
+  ModbusRequest(8) {
+  _slaveAddress = slaveAddress;
+  _functionCode = esp32Modbus::WRITE_COIL;
+  _address = address;
+  _byteCount = 2;
+  add(_slaveAddress);
+  add(_functionCode);
+  add(high(_address));
+  add(low(_address));
+  uint16_t coilValue = value ? MODBUS_COIL_ON : MODBUS_COIL_OFF;
+  add(high(coilValue));
+  add(low(coilValue));
+  uint16_t CRC = CRC16(_buffer, 6);
+  add(low(CRC));
+  add(high(CRC));
+}
+
+size_t ModbusRequest05::responseLength() {
+  return 8;
+}
+
 ModbusRequest06::ModbusRequest06(uint8_t slaveAddress, uint16_t address, uint16_t data) :
   ModbusRequest(8) {
   _slaveAddress = slaveAddress;
@@ -220,6 +280,41 @@ ModbusRequest06::ModbusRequest06(uint8_t slaveAddress, uint16_t address, uint16_
 }
 
 size_t ModbusRequest06::responseLength() {
+  return 8;
+}
+
+ModbusRequest0F::ModbusRequest0F(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool* values) :
+  ModbusRequest(9 + ((numberCoils + 7) / 8)) {
+  // Note: numberCoils should already be validated by esp32ModbusRTU::writeMultipleCoils
+  _slaveAddress = slaveAddress;
+  _functionCode = esp32Modbus::WRITE_MULT_COILS;
+  _address = address;
+  _byteCount = (numberCoils + 7) / 8;  // number of bytes needed for coils
+  add(_slaveAddress);
+  add(_functionCode);
+  add(high(_address));
+  add(low(_address));
+  add(high(numberCoils));
+  add(low(numberCoils));
+  add(_byteCount);
+  
+  // Pack bool values into bytes (8 coils per byte)
+  for (int i = 0; i < _byteCount; i++) {
+    uint8_t byte = 0;
+    for (int bit = 0; bit < 8 && (i * 8 + bit) < numberCoils; bit++) {
+      if (values[i * 8 + bit]) {
+        byte |= (1 << bit);
+      }
+    }
+    add(byte);
+  }
+  
+  uint16_t CRC = CRC16(_buffer, 7 + _byteCount);
+  add(low(CRC));
+  add(high(CRC));
+}
+
+size_t ModbusRequest0F::responseLength() {
   return 8;
 }
 
@@ -248,39 +343,76 @@ size_t ModbusRequest16::responseLength() {
   return 8;
 }
 
+ModbusRequest17::ModbusRequest17(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t* writeData) :
+  ModbusRequest(11 + (writeCount * 2)) {
+  _slaveAddress = slaveAddress;
+  _functionCode = esp32Modbus::READ_WRITE_MULT_REGISTERS;
+  _address = readAddress;  // Store read address
+  _byteCount = readCount * 2;  // Store expected response byte count
+  
+  add(_slaveAddress);
+  add(_functionCode);
+  add(high(readAddress));
+  add(low(readAddress));
+  add(high(readCount));
+  add(low(readCount));
+  add(high(writeAddress));
+  add(low(writeAddress));
+  add(high(writeCount));
+  add(low(writeCount));
+  add(writeCount * 2);  // byte count for write data
+  
+  // Add write data
+  for (int i = 0; i < writeCount; i++) {
+    add(high(writeData[i]));
+    add(low(writeData[i]));
+  }
+  
+  uint16_t CRC = CRC16(_buffer, 11 + (writeCount * 2) - 2);
+  add(low(CRC));
+  add(high(CRC));
+}
+
+size_t ModbusRequest17::responseLength() {
+  // Response: slaveAddress(1) + functionCode(1) + byteCount(1) + data(byteCount) + CRC(2)
+  return 5 + _byteCount;
+}
+
 ModbusResponse::ModbusResponse(uint8_t length, ModbusRequest* request) :
   ModbusMessage(length),
   _request(request),
-  _error(esp32Modbus::SUCCES) {}
+  _error(esp32Modbus::SUCCESS) {}
 
 bool ModbusResponse::isComplete() {
-  if (_buffer[1] > 0x80 && _index == 5) {  // 5: slaveAddress(1), errorCode(1), CRC(2) + indexed
+  if (_buffer[1] & MODBUS_ERROR_FLAG && _index == MODBUS_EXCEPTION_RESPONSE_LENGTH) {  // Exception response
     return true;
   }
   if (_index == _request->responseLength()) return true;
   return false;
 }
 
-bool ModbusResponse::isSucces() {
+bool ModbusResponse::isSuccess() {
   if (!isComplete()) {
     _error = esp32Modbus::TIMEOUT;
-  } else if (_buffer[1] > 0x80) {
+  } else if (_buffer[1] & MODBUS_ERROR_FLAG) {
     _error = static_cast<esp32Modbus::Error>(_buffer[2]);
   } else if (!checkCRC()) {
     _error = esp32Modbus::CRC_ERROR;
-  // TODO(bertmelis): add other checks
+  } else if (_buffer[0] != _request->getSlaveAddress()) {
+    // Response from wrong slave
+    _error = esp32Modbus::INVALID_SLAVE;
+  } else if (_buffer[1] != _request->getFunctionCode()) {
+    // Function code mismatch (not an error response)
+    _error = esp32Modbus::INVALID_RESPONSE;
   } else {
-    _error = esp32Modbus::SUCCES;
+    // Additional validation could be added here for specific function codes
+    _error = esp32Modbus::SUCCESS;
   }
-  if (_error == esp32Modbus::SUCCES) {
-    return true;
-  } else {
-    return false;
-  }
+  return (_error == esp32Modbus::SUCCESS);
 }
 
 bool ModbusResponse::checkCRC() {
-  uint16_t CRC = CRC16(_buffer, _length - 2);
+  uint16_t CRC = CRC16(_buffer, _length - MODBUS_CRC_LENGTH);
   if (low(CRC) == _buffer[_length - 2] && high(CRC) == _buffer[_length -1]) {
     return true;
   } else {
@@ -301,9 +433,20 @@ esp32Modbus::FunctionCode ModbusResponse::getFunctionCode() {
 }
 
 uint8_t* ModbusResponse::getData() {
-  return &_buffer[3];
+  // For write single responses (FC 05, 06), data starts at position 2
+  // For read responses, data starts at position 3 (after byte count)
+  esp32Modbus::FunctionCode fc = getFunctionCode();
+  if (fc == esp32Modbus::WRITE_COIL || fc == esp32Modbus::WRITE_HOLD_REGISTER) {
+    return &_buffer[2];  // Points to register address + value
+  }
+  return &_buffer[3];  // For read responses, skip byte count
 }
 
 uint8_t ModbusResponse::getByteCount() {
-  return _buffer[2];
+  // For write single responses (FC 05, 06), return fixed size
+  esp32Modbus::FunctionCode fc = getFunctionCode();
+  if (fc == esp32Modbus::WRITE_COIL || fc == esp32Modbus::WRITE_HOLD_REGISTER) {
+    return 4;  // 2 bytes address + 2 bytes value
+  }
+  return _buffer[2];  // For read responses, byte count is at position 2
 }

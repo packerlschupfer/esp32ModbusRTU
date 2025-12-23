@@ -32,6 +32,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace esp32ModbusRTUInternals {
 
+// Constants for Modbus protocol
+constexpr uint8_t MODBUS_ERROR_FLAG = 0x80;  // MSB set indicates error response
+constexpr uint8_t MODBUS_EXCEPTION_RESPONSE_LENGTH = 5;  // slave(1) + fc(1) + exception(1) + crc(2)
+constexpr uint8_t MODBUS_MIN_RESPONSE_LENGTH = 5;  // Minimum valid response length
+constexpr uint8_t MODBUS_CRC_LENGTH = 2;  // CRC is always 2 bytes
+constexpr uint16_t MODBUS_COIL_ON = 0xFF00;  // Value for ON coil
+constexpr uint16_t MODBUS_COIL_OFF = 0x0000;  // Value for OFF coil
+
 class ModbusMessage {
  public:
   virtual ~ModbusMessage();
@@ -52,6 +60,10 @@ class ModbusRequest : public ModbusMessage {
  public:
   virtual size_t responseLength() = 0;
   uint16_t getAddress();
+  uint8_t getSlaveAddress() const { return _slaveAddress; }
+  uint8_t getFunctionCode() const { return _functionCode; }
+  esp32Modbus::ModbusPriority getPriority() const { return _priority; }
+  void setPriority(esp32Modbus::ModbusPriority priority) { _priority = priority; }
 
  protected:
   explicit ModbusRequest(uint8_t length);
@@ -59,9 +71,17 @@ class ModbusRequest : public ModbusMessage {
   uint8_t _functionCode;
   uint16_t _address;
   uint16_t _byteCount;
+  esp32Modbus::ModbusPriority _priority;  // Default priority will be set in constructor
 };
 
-// read discrete coils
+// read coils
+class ModbusRequest01 : public ModbusRequest {
+ public:
+  explicit ModbusRequest01(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils);
+  size_t responseLength();
+};
+
+// read discrete inputs
 class ModbusRequest02 : public ModbusRequest {
  public:
   explicit ModbusRequest02(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils);
@@ -82,10 +102,24 @@ class ModbusRequest04 : public ModbusRequest {
   size_t responseLength();
 };
 
-// write single holding registers
+// write single coil
+class ModbusRequest05 : public ModbusRequest {
+ public:
+  explicit ModbusRequest05(uint8_t slaveAddress, uint16_t address, bool value);
+  size_t responseLength();
+};
+
+// write single holding register
 class ModbusRequest06 : public ModbusRequest {
  public:
   explicit ModbusRequest06(uint8_t slaveAddress, uint16_t address, uint16_t data);
+  size_t responseLength();
+};
+
+// write multiple coils
+class ModbusRequest0F : public ModbusRequest {
+ public:
+  explicit ModbusRequest0F(uint8_t slaveAddress, uint16_t address, uint16_t numberCoils, bool* values);
   size_t responseLength();
 };
 
@@ -96,11 +130,19 @@ class ModbusRequest16 : public ModbusRequest {
   size_t responseLength();
 };
 
+// read/write multiple registers
+class ModbusRequest17 : public ModbusRequest {
+ public:
+  explicit ModbusRequest17(uint8_t slaveAddress, uint16_t readAddress, uint16_t readCount, uint16_t writeAddress, uint16_t writeCount, uint16_t* writeData);
+  size_t responseLength();
+};
+
 class ModbusResponse : public ModbusMessage {
  public:
   explicit ModbusResponse(uint8_t length, ModbusRequest* request);
   bool isComplete();
-  bool isSucces();
+  bool isSuccess();  // Correct spelling
+  bool isSucces() { return isSuccess(); }  // Deprecated: kept for backward compatibility
   bool checkCRC();
   esp32Modbus::Error getError() const;
 
