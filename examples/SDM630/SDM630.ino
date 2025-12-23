@@ -28,7 +28,9 @@ void setup() {
     Serial.print("\n\n");
   });
   modbus.onError([](esp32Modbus::Error error) {
-    Serial.printf("error: 0x%02x\n\n", static_cast<uint8_t>(error));
+    Serial.printf("Error: %s (0x%02x)\n\n", 
+                  esp32Modbus::getErrorDescription(error), 
+                  static_cast<uint8_t>(error));
   });
   modbus.begin();
 
