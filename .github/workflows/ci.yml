@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Compile examples (Arduino / esp32dev)
+    name: Compile examples (PlatformIO / esp32)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -31,16 +31,32 @@ jobs:
 
       - name: Compile examples
         run: |
-          set -e
+          set -u
+          # Expose the checked-out repo to PlatformIO's Library Dependency Finder so
+          # any example that #includes this library resolves it, with or without an
+          # explicit `lib_deps` entry. The parent of the checkout holds the repo dir
+          # (which has library.json), so PlatformIO sees it as one available library.
+          export PLATFORMIO_LIB_EXTRA_DIRS="$(dirname "$GITHUB_WORKSPACE")"
+
           shopt -s nullglob
-          built=0
+          attempted=0
+          failed=0
           for d in examples/*/; do
-            sketches=("$d"*.ino)
-            [ ${#sketches[@]} -gt 0 ] || continue
-            echo "::group::pio ci $d"
-            pio ci "$d" --lib . --board esp32dev
-            echo "::endgroup::"
-            built=$((built + 1))
+            # Relocate the .pio workspace outside the repo. Examples that pull the lib
+            # via `lib_deps = ../..` otherwise copy the whole repo into their own build
+            # dir, which nests recursively and fills the runner disk.
+            export PLATFORMIO_WORKSPACE_DIR="$RUNNER_TEMP/pio-ws/$(basename "$d")"
+            if [ -f "${d}platformio.ini" ]; then
+              echo "::group::pio run -d $d"
+              pio run -d "$d" || { failed=$((failed + 1)); echo "FAILED: $d"; }
+              echo "::endgroup::"
+              attempted=$((attempted + 1))
+            elif compgen -G "${d}*.ino" > /dev/null; then
+              echo "::group::pio ci $d"
+              pio ci "$d" --lib . --board esp32dev || { failed=$((failed + 1)); echo "FAILED: $d"; }
+              echo "::endgroup::"
+              attempted=$((attempted + 1))
+            fi
           done
-          echo "Compiled $built example(s)."
-          [ "$built" -gt 0 ]
+          echo "Attempted $attempted example(s); $failed failed."
+          [ "$attempted" -gt 0 ] && [ "$failed" -eq 0 ]
