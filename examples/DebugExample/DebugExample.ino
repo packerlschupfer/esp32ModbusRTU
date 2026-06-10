@@ -34,26 +34,26 @@ struct {
     uint32_t crcErrors = 0;
 } stats;
 
-void handleData(uint8_t serverAddress, esp32Modbus::FunctionCode fc, uint16_t address, uint8_t* data, size_t length) {
+void handleData(uint8_t serverAddress, esp32Modbus::FunctionCode fc, uint16_t address, uint8_t* data, uint16_t length) {
     stats.successes++;
-    
+
     Serial.println("\n=== MODBUS RESPONSE RECEIVED ===");
-    Serial.printf("Server: 0x%02X, Function: 0x%02X, Address: 0x%04X\n", 
+    Serial.printf("Server: 0x%02X, Function: 0x%02X, Address: 0x%04X\n",
                   serverAddress, static_cast<uint8_t>(fc), address);
-    
+
     switch (fc) {
-        case esp32Modbus::FunctionCode::READ_HOLDING_REGISTERS:
-        case esp32Modbus::FunctionCode::READ_INPUT_REGISTERS:
+        case esp32Modbus::READ_HOLD_REGISTER:
+        case esp32Modbus::READ_INPUT_REGISTER:
             Serial.println("Register values:");
             for (size_t i = 0; i < length; i += 2) {
                 uint16_t value = (data[i] << 8) | data[i + 1];
-                Serial.printf("  [%04X] = %u (0x%04X)\n", 
+                Serial.printf("  [%04X] = %u (0x%04X)\n",
                             address + (i/2), value, value);
             }
             break;
-            
-        case esp32Modbus::FunctionCode::READ_COILS:
-        case esp32Modbus::FunctionCode::READ_DISCRETE_INPUTS:
+
+        case esp32Modbus::READ_COIL:
+        case esp32Modbus::READ_DISCR_INPUT:
             Serial.println("Coil/Input values:");
             for (size_t i = 0; i < length; i++) {
                 for (int bit = 0; bit < 8 && (i * 8 + bit) < length * 8; bit++) {
@@ -77,10 +77,10 @@ void handleError(esp32Modbus::Error error) {
     stats.errors++;
     
     switch (error) {
-        case esp32Modbus::Error::TIMEOUT:
+        case esp32Modbus::TIMEOUT:
             stats.timeouts++;
             break;
-        case esp32Modbus::Error::CRC:
+        case esp32Modbus::CRC_ERROR:
             stats.crcErrors++;
             break;
         default:

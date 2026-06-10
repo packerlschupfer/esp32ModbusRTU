@@ -32,25 +32,11 @@
 // Create ModbusRTU instance
 esp32ModbusRTU modbus(&Serial2, RTS_PIN);
 
-// Error code to string helper
-const char* getErrorString(esp32Modbus::Error error) {
-    switch (error) {
-        case esp32Modbus::Error::SUCCESS: return "Success";
-        case esp32Modbus::Error::TIMEOUT: return "Timeout";
-        case esp32Modbus::Error::SYNTAX: return "Invalid syntax";
-        case esp32Modbus::Error::CRC: return "CRC error";
-        case esp32Modbus::Error::EXCEPTION: return "Exception";
-        case esp32Modbus::Error::LENGTH: return "Invalid length";
-        case esp32Modbus::Error::SERVER_ADDR: return "Server address mismatch";
-        case esp32Modbus::Error::QUEUE_FULL: return "Queue full";
-        default: return "Unknown error";
-    }
-}
+void handleData(uint8_t serverAddress, esp32Modbus::FunctionCode fc, uint16_t address, uint8_t* data, uint16_t length) {
+    Serial.printf("Received data from %u, FC %u, address %u:\n",
+                  serverAddress, static_cast<uint8_t>(fc), address);
 
-void handleData(uint8_t serverAddress, esp32Modbus::FunctionCode fc, uint8_t* data, size_t length) {
-    Serial.printf("Received data from %u, FC %u:\n", serverAddress, static_cast<uint8_t>(fc));
-    
-    if (fc == esp32Modbus::FunctionCode::READ_HOLDING_REGISTERS) {
+    if (fc == esp32Modbus::READ_HOLD_REGISTER) {
         for (size_t i = 0; i < length; i += 2) {
             uint16_t value = (data[i] << 8) | data[i + 1];
             Serial.printf("  Register[%u] = %u\n", i/2, value);
@@ -59,7 +45,7 @@ void handleData(uint8_t serverAddress, esp32Modbus::FunctionCode fc, uint8_t* da
 }
 
 void handleError(esp32Modbus::Error error) {
-    Serial.printf("Error: %s\n", getErrorString(error));
+    Serial.printf("Error: %s\n", esp32Modbus::getErrorDescription(error));
 }
 
 void setup() {
