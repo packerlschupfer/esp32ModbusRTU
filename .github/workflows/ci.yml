@@ -8,15 +8,15 @@ on:
 
 jobs:
   build:
-    name: Compile examples (Arduino / esp32dev)
+    name: Compile examples (PlatformIO / esp32)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          submodules: recursive
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-
       - name: Cache PlatformIO
         uses: actions/cache@v4
         with:
@@ -25,22 +25,20 @@ jobs:
             ~/.cache/pip
           key: pio-${{ runner.os }}-${{ hashFiles('library.json', 'examples/**/platformio.ini') }}
           restore-keys: pio-${{ runner.os }}-
-
       - name: Install PlatformIO
         run: pip install --upgrade platformio
-
       - name: Compile examples
         run: |
-          set -e
+          set -u
           shopt -s nullglob
-          built=0
+          attempted=0
+          failed=0
           for d in examples/*/; do
-            sketches=("$d"*.ino)
-            [ ${#sketches[@]} -gt 0 ] || continue
-            echo "::group::pio ci $d"
-            pio ci "$d" --lib . --board esp32dev
+            [ -f "${d}platformio.ini" ] || continue
+            echo "::group::pio run -d $d"
+            pio run -d "$d" || { failed=$((failed + 1)); echo "FAILED: $d"; }
             echo "::endgroup::"
-            built=$((built + 1))
+            attempted=$((attempted + 1))
           done
-          echo "Compiled $built example(s)."
-          [ "$built" -gt 0 ]
+          echo "Attempted $attempted example(s); $failed failed."
+          [ "$attempted" -gt 0 ] && [ "$failed" -eq 0 ]
