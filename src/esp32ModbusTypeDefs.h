@@ -69,7 +69,11 @@ enum Error : uint8_t {
 typedef std::function<void(uint16_t, uint8_t, esp32Modbus::FunctionCode, uint8_t*, uint16_t)> MBTCPOnData;
 typedef std::function<void(uint8_t, esp32Modbus::FunctionCode, uint16_t, uint8_t*, uint16_t)> MBRTUOnData;
 typedef std::function<void(uint16_t, esp32Modbus::Error)> MBTCPOnError;
-typedef std::function<void(esp32Modbus::Error)> MBRTUOnError;
+// F18: include the slave address (like the TCP variant) so the firmware can
+// route a comm error to the OWNING device's handler. Without it, an error could
+// not be attributed to a device: ModbusDevice::handleError never ran, syncContext
+// errors were never flagged, and per-device error stats stayed zero.
+typedef std::function<void(uint16_t, esp32Modbus::Error)> MBRTUOnError;
 
 // Helper function to get error description
 inline const char* getErrorDescription(Error error) {

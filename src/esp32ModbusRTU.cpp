@@ -548,7 +548,7 @@ void esp32ModbusRTU::_handleConnection(esp32ModbusRTU *instance)
                      static_cast<uint8_t>(error));
         
         if (instance->_onError)
-          instance->_onError(error);
+          instance->_onError(request->getSlaveAddress(), error);  // F18: pass slave address
       }
       delete request;  // object created in public methods
       delete response; // object created in _receive()
@@ -615,6 +615,15 @@ void esp32ModbusRTU::_send(uint8_t *data, uint8_t length)
   MODBUS_LOG_PROTO("Sending %d bytes to address 0x%02X, FC=0x%02X", length, data[0], data[1]);
   MODBUS_DUMP_BUFFER("TX", data, length);
   
+  // F16: drain any stale RX bytes before transmitting. Leftover bytes from a
+  // prior response timeout, an over-length response, or line noise sit in the
+  // UART FIFO and would otherwise be consumed as the START of THIS transaction's
+  // response - producing cascading CRC errors, or (worst case) a stale
+  // same-slave/same-FC/same-length frame accepted as a fresh reply.
+  while (_serial->available()) {
+    (void)_serial->read();
+  }
+
   // Toggle rtsPin to TX mode
   if (_rtsPin >= 0)
     digitalWrite(_rtsPin, HIGH);
@@ -736,6 +745,13 @@ ModbusResponse *esp32ModbusRTU::_receive(ModbusRequest *request)
     if (millis() - _lastMillis > TimeOutValue)
     {
       MODBUS_LOG_PROTO("Response timeout after %lu ms", TimeOutValue);
+      // F16: a late/partial response may still be arriving after the timeout.
+      // Purge whatever is (or is about to be) in the FIFO so those bytes do not
+      // misalign the next transaction's framing. The pre-send drain in _send()
+      // is the primary guard; this narrows the late-arrival window further.
+      while (_serial->available()) {
+        (void)_serial->read();
+      }
       break;
     }
     
