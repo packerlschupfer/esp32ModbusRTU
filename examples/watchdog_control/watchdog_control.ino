@@ -33,7 +33,7 @@ void handleData(uint8_t serverAddress, esp32Modbus::FunctionCode fc, uint16_t ad
   }
 }
 
-void handleError(esp32Modbus::Error error) {
+void handleError(uint16_t /*serverAddress*/, esp32Modbus::Error error) {
   Serial.printf("Modbus error: 0x%02X\n", static_cast<uint8_t>(error));
 }
 

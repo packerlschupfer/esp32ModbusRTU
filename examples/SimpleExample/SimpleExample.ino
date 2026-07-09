@@ -71,7 +71,7 @@ void setup() {
   });
   
   // Set up error handler
-  modbus.onError([](esp32Modbus::Error error) {
+  modbus.onError([](uint16_t /*serverAddress*/, esp32Modbus::Error error) {
     Serial.printf("Modbus error: %s (0x%02x)\n", 
                  esp32Modbus::getErrorDescription(error), error);
   });

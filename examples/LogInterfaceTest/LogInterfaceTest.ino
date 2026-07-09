@@ -69,7 +69,7 @@ void setup() {
     Serial.printf("Data length: %d bytes\n", length);
   });
   
-  modbus.onError([](esp32Modbus::Error error) {
+  modbus.onError([](uint16_t /*serverAddress*/, esp32Modbus::Error error) {
     Serial.printf("\nModbus error: %s (0x%02x)\n", 
                   esp32Modbus::getErrorDescription(error), error);
   });
